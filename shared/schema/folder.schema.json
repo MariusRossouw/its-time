@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Folder",
+  "description": "A folder that groups lists",
+  "type": "object",
+  "required": ["id", "name", "createdAt", "updatedAt", "schemaVersion"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1 },
+    "icon": { "type": "string", "description": "SF Symbol name", "default": "folder" },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "isExpanded": { "type": "boolean", "default": true },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "deviceId": { "type": "string" }
+  }
+}

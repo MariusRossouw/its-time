@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tags",
+  "description": "All tags in the system",
+  "type": "object",
+  "required": ["schemaVersion", "tags"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "tags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Tag" }
+    },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "deviceId": { "type": "string" }
+  },
+  "$defs": {
+    "Tag": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "minLength": 1 },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#8E8E93"
+        },
+        "parentId": { "type": "string", "format": "uuid", "description": "For nested/hierarchical tags" },
+        "sortOrder": { "type": "integer", "default": 0 }
+      }
+    }
+  }
+}

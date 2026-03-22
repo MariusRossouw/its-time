@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskList",
+  "description": "A list that contains tasks",
+  "type": "object",
+  "required": ["id", "name", "createdAt", "updatedAt", "schemaVersion"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1 },
+    "color": {
+      "type": "string",
+      "description": "Hex color code",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "default": "#007AFF"
+    },
+    "icon": { "type": "string", "description": "SF Symbol name", "default": "list.bullet" },
+    "folderId": { "type": "string", "format": "uuid" },
+    "isInbox": { "type": "boolean", "default": false },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Section" },
+      "default": []
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "deviceId": { "type": "string" }
+  },
+  "$defs": {
+    "Section": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string" },
+        "sortOrder": { "type": "integer", "default": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+name: ItsTime
+options:
+  bundleIdPrefix: com.itstime
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: false
+
+targets:
+  ItsTime:
+    type: application
+    platform: [iOS, macOS]
+    sources:
+      - path: ItsTime
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.itstime.app
+        PRODUCT_NAME: Its Time
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: "Its Time"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE: false
+        SWIFT_STRICT_CONCURRENCY: minimal
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+      configs:
+        debug:
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+        release:
+          DEVELOPMENT_TEAM: ""
+    dependencies:
+      - target: ItsTimeWidgets
+        embed: true
+        codeSign: true
+        platforms: [iOS]
+    entitlements:
+      path: ItsTime/App/ItsTime.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.personal-information.calendars: true
+
+  ItsTimeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ItsTimeUITests
+        excludes:
+          - "**/.DS_Store"
+          - "**/*.md"
+    dependencies:
+      - target: ItsTime_iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.itstime.app.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        TEST_TARGET_NAME: ItsTime_iOS
+      configs:
+        debug:
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+        release:
+          DEVELOPMENT_TEAM: ""
+
+  ItsTimeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ItsTimeWidgets
+        excludes:
+          - "**/.DS_Store"
+      - path: ItsTime/Models
+      - path: ItsTime/Utilities/ColorExtensions.swift
+      - path: ItsTime/Utilities/DeviceInfo.swift
+    info:
+      path: ItsTimeWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.itstime.app.widgets
+        PRODUCT_NAME: ItsTimeWidgets
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        INFOPLIST_KEY_CFBundleDisplayName: "Its Time Widgets"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+      configs:
+        debug:
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+        release:
+          DEVELOPMENT_TEAM: ""

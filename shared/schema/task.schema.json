@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Task",
+  "description": "A task in Its Time",
+  "type": "object",
+  "required": ["id", "title", "createdAt", "updatedAt", "status", "schemaVersion"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "default": "" },
+    "status": {
+      "type": "string",
+      "enum": ["todo", "done", "wontDo"],
+      "default": "todo"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["none", "low", "medium", "high"],
+      "default": "none"
+    },
+    "dueDate": { "type": "string", "format": "date-time" },
+    "dueTime": { "type": "string", "format": "time" },
+    "startDate": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "listId": { "type": "string", "format": "uuid" },
+    "tagIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" },
+      "default": []
+    },
+    "subtasks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Subtask" },
+      "default": []
+    },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "reminderOffsets": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "default": [],
+      "description": "Reminder offsets in seconds before dueDate. Negative = before."
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "deviceId": { "type": "string", "description": "Device that last modified this task" }
+  },
+  "$defs": {
+    "Subtask": {
+      "type": "object",
+      "required": ["id", "title", "isCompleted"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "title": { "type": "string" },
+        "isCompleted": { "type": "boolean", "default": false },
+        "sortOrder": { "type": "integer", "default": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Preferences",
+  "description": "User preferences and settings",
+  "type": "object",
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "defaultListId": { "type": "string", "format": "uuid", "description": "Default list for new tasks (Inbox if unset)" },
+    "defaultPriority": { "type": "string", "enum": ["none", "low", "medium", "high"], "default": "none" },
+    "defaultReminderOffset": { "type": "integer", "description": "Default reminder in seconds before due. Null = no default." },
+    "weekStartDay": { "type": "integer", "minimum": 1, "maximum": 7, "default": 1, "description": "1=Sunday, 2=Monday, ..., 7=Saturday" },
+    "timeFormat": { "type": "string", "enum": ["12h", "24h"], "default": "12h" },
+    "theme": { "type": "string", "enum": ["system", "light", "dark"], "default": "system" },
+    "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "default": "#007AFF" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "deviceId": { "type": "string" }
+  }
+}

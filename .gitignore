@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Xcode
+apple/ItsTime.xcodeproj/xcuserdata/
+apple/ItsTime.xcodeproj/project.xcworkspace/xcuserdata/
+apple/*.xcodeproj/xcuserdata/
+xcuserdata/
+*.xcscmblueprint
+DerivedData/
+build/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Packages/
+
+# Android (future)
+android/.gradle/
+android/build/
+android/local.properties
+android/*.iml
+
+# Windows (future)
+windows/bin/
+windows/obj/
+windows/*.user
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
