@@ -16,6 +16,10 @@ struct SettingsView: View {
     @AppStorage("focusDuration") private var focusDuration = 25
     @AppStorage("shortBreakDuration") private var shortBreakDuration = 5
     @AppStorage("longBreakDuration") private var longBreakDuration = 15
+    @AppStorage("autoNudgeEnabled") private var autoNudgeEnabled = false
+    @AppStorage("autoNudgeDaytimeHour") private var autoNudgeDaytimeHour = 10
+    @AppStorage("autoNudgeNighttimeHour") private var autoNudgeNighttimeHour = 20
+    @AppStorage("autoNudgeAnytimeHour") private var autoNudgeAnytimeHour = 14
 
     var body: some View {
         Form {
@@ -99,6 +103,45 @@ struct SettingsView: View {
                     }
             }
 
+            Section {
+                Toggle("Auto-Nudge Reminders", isOn: $autoNudgeEnabled)
+                    .onChange(of: autoNudgeEnabled) {
+                        if !autoNudgeEnabled {
+                            NotificationService.shared.cancelAllAutoNudges()
+                        }
+                    }
+
+                if autoNudgeEnabled {
+                    Text("Tasks without a reminder get a daily check-in: \"Will you still get to this?\" — at times based on each task's preferred time of day.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Picker("Daytime tasks", selection: $autoNudgeDaytimeHour) {
+                        ForEach(6..<13, id: \.self) { h in
+                            Text(formatHour(h)).tag(h)
+                        }
+                    }
+
+                    Picker("Nighttime tasks", selection: $autoNudgeNighttimeHour) {
+                        ForEach(17..<24, id: \.self) { h in
+                            Text(formatHour(h)).tag(h)
+                        }
+                    }
+
+                    Picker("Anytime tasks", selection: $autoNudgeAnytimeHour) {
+                        ForEach(8..<21, id: \.self) { h in
+                            Text(formatHour(h)).tag(h)
+                        }
+                    }
+                }
+            } header: {
+                Text("Auto-Nudge")
+            } footer: {
+                if autoNudgeEnabled {
+                    Text("Actions: Done, Later (snooze 1 hr), Won't Do, Delete")
+                }
+            }
+
             Section("Sync") {
                 NavigationLink {
                     SyncProfilesListView()
@@ -172,6 +215,13 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+    }
+
+    private func formatHour(_ h: Int) -> String {
+        let use24 = timeFormat == "24h"
+        if use24 { return String(format: "%02d:00", h) }
+        if h == 0 || h == 12 { return "\(h == 0 ? 12 : 12):00 \(h < 12 ? "AM" : "PM")" }
+        return "\(h > 12 ? h - 12 : h):00 \(h < 12 ? "AM" : "PM")"
     }
 }
 

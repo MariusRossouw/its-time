@@ -23,7 +23,9 @@ struct CustomFilterListView: View {
                 .listRowSeparator(.hidden)
             } else {
                 ForEach(matchingTasks) { task in
-                    NavigationLink(value: task) {
+                    NavigationLink {
+                        if task.isNote { NoteEditorView(note: task) } else { TaskDetailView(task: task) }
+                    } label: {
                         TaskRowView(task: task)
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -40,7 +42,6 @@ struct CustomFilterListView: View {
                 }
             }
         }
-        .taskNavigationDestination()
         .listStyle(.plain)
         .navigationTitle(filter.name)
     }

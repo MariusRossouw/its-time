@@ -7,19 +7,30 @@ struct DailyCalendarView: View {
 
     @Query(sort: \TaskItem.dueDate) private var allTasks: [TaskItem]
     @State private var quickAddDate: Date?
+    @State private var now = Date()
 
     private let calendar = Calendar.current
+    private let hourHeight: CGFloat = 64
+    private let timeColumnWidth: CGFloat = 52
+    private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     private var solar: SolarService { .shared }
+
+    private var weekDates: [Date] {
+        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate))!
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: startOfWeek) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             dayNavBar
+            miniWeekStrip
             Divider()
             timeGrid
         }
         .sheet(item: $quickAddDate) { date in
             QuickAddView(initialDueDate: date)
         }
+        .onReceive(timer) { _ in now = Date() }
         .onChange(of: selectedDate) {
             if let loc = solar.lastLocation {
                 solar.update(for: loc, date: selectedDate)
@@ -66,36 +77,245 @@ struct DailyCalendarView: View {
         .padding(.vertical, 8)
     }
 
+    // MARK: - Mini Week Strip
+
+    private var miniWeekStrip: some View {
+        HStack(spacing: 0) {
+            ForEach(weekDates, id: \.self) { date in
+                let isToday = calendar.isDateInToday(date)
+                let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+                let hasTasks = allTasks.contains { task in
+                    guard let due = task.dueDate, task.status == .todo else { return false }
+                    return calendar.isDate(due, inSameDayAs: date)
+                }
+
+                Button {
+                    withAnimation { selectedDate = date }
+                } label: {
+                    VStack(spacing: 3) {
+                        Text(shortDayName(date))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                        Text("\(calendar.component(.day, from: date))")
+                            .font(.subheadline.weight(isSelected ? .bold : .regular))
+                            .foregroundStyle(isSelected ? .white : isToday ? .accentColor : .primary)
+                            .frame(width: 32, height: 32)
+                            .background(isSelected ? Color.accentColor : .clear)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(isToday && !isSelected ? Color.accentColor : .clear, lineWidth: 1.5)
+                            )
+                        Circle()
+                            .fill(hasTasks ? Color.accentColor : .clear)
+                            .frame(width: 4, height: 4)
+                    }
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+    }
+
     // MARK: - Time Grid
 
     private var timeGrid: some View {
         ScrollView {
             ScrollViewReader { proxy in
-                VStack(spacing: 0) {
-                    ForEach(6..<23, id: \.self) { hour in
-                        DailyHourRow(
-                            hour: hour,
-                            date: selectedDate,
-                            tasks: tasksForHour(hour),
-                            period: solar.period(for: hour),
-                            marker: solar.marker(for: hour),
-                            hasMarker: solar.markerHours.contains(hour),
-                            onLongPress: { longPressDate in
-                                quickAddDate = longPressDate
+                ZStack(alignment: .topLeading) {
+                    // Hour grid lines
+                    VStack(spacing: 0) {
+                        ForEach(0..<24, id: \.self) { hour in
+                            HStack(alignment: .top, spacing: 0) {
+                                Text(hourLabel(hour))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: timeColumnWidth, alignment: .trailing)
+                                    .padding(.trailing, 6)
+                                    .offset(y: -6)
+
+                                VStack(spacing: 0) {
+                                    Rectangle()
+                                        .fill(Color.secondary.opacity(0.15))
+                                        .frame(height: 0.5)
+                                    Spacer()
+                                }
                             }
-                        )
-                        Divider().padding(.leading, 58)
+                            .frame(height: hourHeight)
+                            .id(hour)
+                        }
+                    }
+
+                    // Task cards
+                    taskCardsOverlay
+
+                    // Current time indicator
+                    if calendar.isDateInToday(selectedDate) {
+                        currentTimeIndicator
                     }
                 }
                 .onAppear {
                     let currentHour = calendar.component(.hour, from: Date())
-                    proxy.scrollTo(max(currentHour - 1, 6), anchor: .top)
+                    proxy.scrollTo(max(currentHour - 2, 0), anchor: .top)
                 }
             }
         }
     }
 
+    // MARK: - Task Cards Overlay
+
+    private var taskCardsOverlay: some View {
+        let dayTasks = allTasks.filter { task in
+            guard let due = task.dueDate, task.status == .todo else { return false }
+            return calendar.isDate(due, inSameDayAs: selectedDate)
+        }
+
+        return ZStack(alignment: .topLeading) {
+            ForEach(dayTasks) { task in
+                if let due = task.dueDate {
+                    let hour = calendar.component(.hour, from: due)
+                    let minute = calendar.component(.minute, from: due)
+                    let yOffset = CGFloat(hour) * hourHeight + CGFloat(minute) / 60.0 * hourHeight
+
+                    HStack(alignment: .top, spacing: 0) {
+                        // Timeline node
+                        VStack(spacing: 0) {
+                            Circle()
+                                .fill(taskColor(task))
+                                .frame(width: 10, height: 10)
+                        }
+                        .frame(width: timeColumnWidth)
+                        .offset(y: 8)
+
+                        // Task card
+                        NavigationLink(value: task) {
+                            dailyTaskCard(task)
+                        }
+                        .buttonStyle(.plain)
+                        .draggable(task.id.uuidString)
+                        .padding(.trailing, 12)
+                    }
+                    .offset(y: yOffset)
+                }
+            }
+        }
+        .frame(height: hourHeight * 24)
+    }
+
+    private func dailyTaskCard(_ task: TaskItem) -> some View {
+        HStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(taskColor(task))
+                .frame(width: 4)
+
+            VStack(alignment: .leading, spacing: 4) {
+                if let due = task.dueDate {
+                    HStack(spacing: 4) {
+                        Text(due, format: .dateTime.hour().minute())
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if let dueTime = task.dueTime {
+                            Text("– \(dueTime, format: .dateTime.hour().minute())")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Text(task.title)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    if let list = task.list {
+                        HStack(spacing: 3) {
+                            Image(systemName: list.icon)
+                                .font(.system(size: 9))
+                            Text(list.name)
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+
+                    if !task.subtasks.isEmpty {
+                        HStack(spacing: 2) {
+                            Image(systemName: "checklist")
+                                .font(.system(size: 9))
+                            let done = task.subtasks.filter(\.isCompleted).count
+                            Text("\(done)/\(task.subtasks.count)")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+
+                    if task.isRecurring {
+                        Image(systemName: "repeat")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+
+            Spacer(minLength: 0)
+        }
+        .background(taskColor(task).opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(taskColor(task).opacity(0.2), lineWidth: 0.5)
+        )
+    }
+
+    // MARK: - Current Time Indicator
+
+    private var currentTimeIndicator: some View {
+        let hour = calendar.component(.hour, from: now)
+        let minute = calendar.component(.minute, from: now)
+        let yOffset = CGFloat(hour) * hourHeight + CGFloat(minute) / 60.0 * hourHeight
+
+        return HStack(spacing: 0) {
+            // Time label
+            Text(now, format: .dateTime.hour().minute())
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.red)
+                .frame(width: timeColumnWidth, alignment: .trailing)
+                .padding(.trailing, 4)
+
+            // Red dot + line
+            Circle()
+                .fill(Color.red)
+                .frame(width: 8, height: 8)
+                .offset(x: -4)
+
+            Rectangle()
+                .fill(Color.red)
+                .frame(height: 1.5)
+        }
+        .offset(y: yOffset - 4)
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Drop targets (invisible overlay for each hour)
+
     // MARK: - Helpers
+
+    private func taskColor(_ task: TaskItem) -> Color {
+        if let list = task.list {
+            return Color(hex: list.color)
+        }
+        return Color.priorityColor(task.priority)
+    }
+
+    private func hourLabel(_ hour: Int) -> String {
+        if hour == 0 { return "12 AM" }
+        if hour < 12 { return "\(hour) AM" }
+        if hour == 12 { return "12 PM" }
+        return "\(hour - 12) PM"
+    }
 
     private var dayTitle: String {
         let df = DateFormatter()
@@ -103,12 +323,10 @@ struct DailyCalendarView: View {
         return df.string(from: selectedDate)
     }
 
-    private func tasksForHour(_ hour: Int) -> [TaskItem] {
-        allTasks.filter { task in
-            guard let due = task.dueDate, task.status == .todo else { return false }
-            guard calendar.isDate(due, inSameDayAs: selectedDate) else { return false }
-            return calendar.component(.hour, from: due) == hour
-        }
+    private func shortDayName(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "EEE"
+        return df.string(from: date)
     }
 
     private func changeDay(_ delta: Int) {
@@ -129,133 +347,4 @@ extension Notification.Name {
 // Make Date identifiable for .sheet(item:)
 extension Date: @retroactive Identifiable {
     public var id: TimeInterval { timeIntervalSince1970 }
-}
-
-// MARK: - Hour Row
-
-struct DailyHourRow: View {
-    let hour: Int
-    let date: Date
-    let tasks: [TaskItem]
-    var period: DayPeriod = .morning
-    var marker: SolarMarker?
-    var hasMarker: Bool = false
-    let onLongPress: (Date) -> Void
-    var onDrop: ((TaskItem, Int) -> Void)?
-
-    private let calendar = Calendar.current
-
-    @State private var isTargeted = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            Text(hourLabel)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(width: 52, alignment: .trailing)
-                .padding(.trailing, 6)
-
-            ZStack(alignment: .topLeading) {
-                Rectangle()
-                    .fill(dropFillColor)
-                    .frame(height: 60)
-                    .contentShape(Rectangle())
-                    .onLongPressGesture {
-                        var comps = calendar.dateComponents([.year, .month, .day], from: date)
-                        comps.hour = hour
-                        comps.minute = 0
-                        if let targetDate = calendar.date(from: comps) {
-                            onLongPress(targetDate)
-                        }
-                    }
-                    .dropDestination(for: String.self) { items, _ in
-                        guard let uuidString = items.first else { return false }
-                        NotificationCenter.default.post(
-                            name: .calendarTaskDropped,
-                            object: nil,
-                            userInfo: ["taskId": uuidString, "hour": hour]
-                        )
-                        return true
-                    } isTargeted: { targeted in
-                        isTargeted = targeted
-                    }
-
-                if let marker {
-                    sunMarker(icon: marker.icon, color: marker.color)
-                }
-
-                VStack(spacing: 3) {
-                    ForEach(tasks) { task in
-                        NavigationLink(value: task) {
-                            DailyTaskBlockLabel(task: task)
-                        }
-                        .buttonStyle(.plain)
-                        .draggable(task.id.uuidString)
-                    }
-                }
-                .padding(.top, hasMarker ? 14 : 2)
-                .padding(.trailing, 8)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .id(hour)
-    }
-
-    private var hourLabel: String {
-        if hour == 0 { return "12 AM" }
-        if hour < 12 { return "\(hour) AM" }
-        if hour == 12 { return "12 PM" }
-        return "\(hour - 12) PM"
-    }
-
-    private var dropFillColor: Color {
-        if isTargeted {
-            return Color.accentColor.opacity(0.15)
-        }
-        switch period {
-        case .morning: return Color.orange.opacity(0.03)
-        case .afternoon: return Color.yellow.opacity(0.03)
-        case .evening: return Color.indigo.opacity(0.04)
-        case .night: return Color.gray.opacity(0.05)
-        }
-    }
-
-    private func sunMarker(icon: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 10))
-            Rectangle().frame(height: 1)
-        }
-        .foregroundStyle(color.opacity(0.6))
-        .padding(.trailing, 8)
-    }
-}
-
-// MARK: - Task Block Label
-
-struct DailyTaskBlockLabel: View {
-    let task: TaskItem
-
-    var body: some View {
-        HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.priorityColor(task.priority))
-                .frame(width: 3)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(task.title)
-                    .font(.caption)
-                    .lineLimit(1)
-                if let due = task.dueDate {
-                    Text(due, format: .dateTime.hour().minute())
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(Color.priorityColor(task.priority).opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
 }

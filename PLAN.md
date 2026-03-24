@@ -17,54 +17,54 @@ Everything below is what TickTick offers. We use this as our feature compass —
 ### Task Management
 
 #### Task Creation & Input
-- [ ] Quick add button with natural placement
+- [x] Quick add button with natural placement
 - [ ] Natural language parsing (e.g. "Meeting tomorrow at 3pm" auto-sets date/time)
-- [ ] Voice input with smart date recognition
+- [x] Voice input with smart date recognition
 - [ ] Email-to-task (forward emails to create tasks)
 - [ ] Browser extension (save pages as tasks)
 - [ ] Global keyboard shortcut for quick-add
 - [ ] Clipboard import (batch-create tasks from clipboard)
-- [ ] Task templates (save & reuse task structures)
+- [x] Task templates (save & reuse task structures)
 - [ ] Batch task creation (multiple tasks at once)
 
 #### Task Properties
-- [ ] Title
-- [ ] Due date (single date or start + end date range)
-- [ ] Time (specific time or all-day)
-- [ ] Priority levels: High, Medium, Low, None
-- [ ] Subtasks / checklist items (up to 5 levels of nesting)
-- [ ] Description with rich text / Markdown support
+- [x] Title
+- [x] Due date (single date or start + end date range)
+- [x] Time (specific time or all-day with time preference: anytime/daytime/nighttime)
+- [x] Priority levels: High, Medium, Low, None
+- [x] Subtasks / checklist items (up to 5 levels of nesting)
+- [x] Description with rich text / Markdown support
 - [ ] Attachments (images, files, audio)
-- [ ] Tags (multiple per task, color-coded, hierarchical)
-- [ ] Comments
-- [ ] Activity / history log
-- [ ] Progress percentage
+- [x] Tags (multiple per task, color-coded, hierarchical)
+- [x] Unified activity timeline (system events + threaded comments in one view)
+- [x] Activity / history log (comprehensive tracking: status, priority, tags, assignments, dates, children, habits, subtasks, reminders, conversions, parent changes)
+- [x] Progress percentage
 - [ ] Pin to top
-- [ ] Task links (cross-reference between tasks via URL)
-- [ ] Task duplication
-- [ ] Batch editing (select multiple, edit in bulk)
-- [ ] Drag-and-drop reordering
-- [ ] "Won't Do" status (distinct from completed)
-- [ ] Reopen completed/abandoned tasks
-- [ ] Convert between task and note
+- [x] Task links (parent-child hierarchy: task↔task, task↔note, note↔note, task↔habit)
+- [x] Task duplication
+- [x] Batch editing (select multiple, edit in bulk)
+- [x] Drag-and-drop reordering
+- [x] "Won't Do" status (distinct from completed)
+- [x] Reopen completed/abandoned tasks
+- [x] Convert between task and note
 - [ ] Archive completed tasks
 
 #### Recurring Tasks
-- [ ] Fixed-time recurrence (daily, weekly, monthly, yearly, custom)
-- [ ] Completion-based recurrence (next starts after previous completes)
-- [ ] Skip a cycle without breaking the pattern
-- [ ] Custom repeat rules (e.g. "every 2 weeks on Mon and Wed")
+- [x] Fixed-time recurrence (daily, weekly, monthly, yearly, custom)
+- [x] Completion-based recurrence (next starts after previous completes)
+- [x] Skip a cycle without breaking the pattern
+- [x] Custom repeat rules (e.g. "every 2 weeks on Mon and Wed")
 
 #### Reminders & Notifications
-- [ ] Multiple reminders per task
-- [ ] Custom reminder times (minutes/hours/days before)
-- [ ] Default reminder settings for all new tasks
+- [x] Multiple reminders per task
+- [x] Custom reminder times (minutes/hours/days before)
+- [x] Default reminder settings for all new tasks (auto-nudge system with per-time-preference hours)
 - [ ] Persistent/constant reminder until acknowledged
-- [ ] Location-based reminders (arrive/leave geofence)
+- [x] Location-based reminders (arrive/leave geofence)
 - [ ] Email reminders
 - [ ] Priority-based notification sounds
-- [ ] Snooze reminders
-- [ ] Daily summary notification (scheduled digest)
+- [x] Snooze reminders
+- [x] Daily summary notification (scheduled digest)
 - [ ] Countdown mode (days remaining vs. due date)
 
 #### Triggers & Automation
@@ -97,44 +97,44 @@ Everything below is what TickTick offers. We use this as our feature compass —
 ### Lists & Organization
 
 #### Hierarchy
-- [ ] Folders (group lists)
-- [ ] Lists (primary containers)
-- [ ] Sections (subdivisions within a list)
-- [ ] Smart Lists (auto-populated by filter criteria)
+- [x] Folders (group lists)
+- [x] Lists (primary containers)
+- [x] Sections (subdivisions within a list)
+- [x] Smart Lists (auto-populated by filter criteria)
 
 #### Built-in Smart Lists
-- [ ] Today
-- [ ] Next 7 Days
-- [ ] All
-- [ ] Inbox (default unsorted capture)
-- [ ] Assigned to Me
+- [x] Today
+- [x] Next 7 Days
+- [x] All
+- [x] Inbox (default unsorted capture)
+- [x] Assigned to Me (auto-assigns tasks to current user on creation)
 
 #### Filters & Smart Lists
-- [ ] Custom smart lists with combined filters
-- [ ] Filter by: list, tag, date, priority, assignee, keyword
-- [ ] Multi-condition filters with AND/OR logic
-- [ ] Suggested tasks (recently added, postponed, overdue, upcoming)
+- [x] Custom smart lists with combined filters
+- [x] Filter by: list, tag, date, priority, assignee, keyword
+- [x] Multi-condition filters with AND/OR logic
+- [x] Suggested tasks (recently added, postponed, overdue, upcoming)
 
 #### Sorting & Grouping
-- [ ] Sort by: date, priority, title, list, tag, assignee, custom order
-- [ ] Group by: custom, list, time, priority, assignee
-- [ ] Smart sort (automatic intelligent ordering)
-- [ ] Manual drag-and-drop sorting
+- [x] Sort by: date, priority, title, list, tag, assignee, custom order
+- [x] Group by: custom, list, time, priority, assignee
+- [x] Smart sort (automatic intelligent ordering)
+- [x] Manual drag-and-drop sorting
 
 #### Tags
-- [ ] Unlimited tags
-- [ ] Nested / hierarchical tags
-- [ ] Tag-based filtering and search
-- [ ] Color-coded tags
+- [x] Unlimited tags
+- [x] Nested / hierarchical tags
+- [x] Tag-based filtering and search
+- [x] Color-coded tags
 
 ### Calendar & Time
 
 #### Calendar Views
-- [ ] Monthly view
-- [ ] Weekly view
-- [ ] 3-day view
-- [ ] Daily view
-- [ ] Agenda / list view
+- [x] Monthly view
+- [x] Weekly view
+- [x] 3-day view
+- [x] Daily view
+- [x] Agenda / list view
 
 #### Calendar Features
 - [ ] Time blocking (drag tasks onto time slots)
@@ -189,37 +189,37 @@ Everything below is what TickTick offers. We use this as our feature compass —
 - [ ] Start focus sessions for habits
 
 ### Collaboration
-- [ ] Shared lists (share any list with others)
+- [x] Shared lists (share any list with others)
 - [ ] Permission levels (edit, comment, read-only)
 - [ ] Invitation by email or shareable link
-- [ ] Task assignment to team members
-- [ ] Task comments (threaded discussion)
-- [ ] Activity log (full change history)
+- [x] Task assignment to team members
+- [x] Unified activity timeline (threaded comments + system events in one scrollable view)
+- [x] Activity log (full change history — comprehensive tracking of all task mutations)
 - [ ] @mention team members in comments
 - [ ] Do Not Disturb per shared list
-- [ ] Group/sort by assignee
+- [x] Group/sort by assignee
 
 ### Productivity Views
-- [ ] Eisenhower Matrix (4-quadrant urgent/important grid)
-  - [ ] Automatic color-coding per quadrant
+- [x] Eisenhower Matrix (4-quadrant urgent/important grid)
+  - [x] Automatic color-coding per quadrant
   - [ ] Drag tasks between quadrants
   - [ ] Customizable placement rules
-- [ ] Kanban Board
-  - [ ] Column-based visualization
-  - [ ] Group by: status, section, priority, assignee, list, tag, custom
+- [x] Kanban Board
+  - [x] Column-based visualization
+  - [x] Group by: status, section, priority, assignee, list, tag, custom
   - [ ] Drag-and-drop between columns
-- [ ] Timeline View (Gantt-like)
-  - [ ] Tasks displayed by duration on horizontal timeline
+- [x] Timeline View (Gantt-like)
+  - [x] Tasks displayed by duration on horizontal timeline
   - [ ] Drag to adjust start times and durations
 
 ### Notes
-- [ ] Standalone notes (separate from tasks, not scheduled/completable)
-- [ ] Notes and tasks coexist in same list
-- [ ] Bidirectional conversion between task and note
-- [ ] Markdown support (15+ syntax elements)
-- [ ] Rich text formatting
+- [x] Standalone notes (separate from tasks, not scheduled/completable)
+- [x] Notes and tasks coexist in same list
+- [x] Bidirectional conversion between task and note
+- [x] Markdown support (15+ syntax elements)
+- [x] Rich text formatting
 - [ ] Attachments in notes
-- [ ] Dates, reminders, and tags on notes
+- [x] Dates, reminders, and tags on notes
 
 ### Reports & Summaries
 - [ ] Task summary / report generation
@@ -507,7 +507,7 @@ its-time/
 - [x] Standalone notes with Markdown
 - [x] Notes and tasks coexist in lists
 - [x] Convert between task and note
-- [ ] Attachments (images, files via system share sheet)
+- [x] Attachments (images, files via system share sheet)
 
 ### Phase 6 — Views & Productivity
 **Goal:** Multiple ways to see and manage work.
@@ -538,8 +538,8 @@ its-time/
 
 - [x] Shared lists (invite others to a shared sync repo or branch)
 - [x] Task assignment
-- [x] Comments on tasks (threaded)
-- [x] Activity log / change history (derived from git log)
+- [x] Unified activity timeline (threaded comments + system events in one view)
+- [x] Activity log / change history
 - [x] Assigned to Me smart list
 - [x] Conflict resolution UI for multi-user edits
 
@@ -582,8 +582,28 @@ its-time/
 
 ## Current Status
 
-**Phase:** Phase 8 complete — Collaboration
-**Next Step:** Phase 9 — Polish & Power Features (NLP input, themes, keyboard shortcuts, gamification)
+**Phase:** Phase 9 in progress — Polish & Power Features
+**Next Step:** Continue Phase 9 (NLP input, themes, keyboard shortcuts, gamification, Apple Watch)
+
+**Recent additions (Phase 9):**
+- Attachments support (images via PhotosPicker, files via document picker, thumbnail previews, QuickLook)
+- Voice input for task creation (Speech framework, real-time transcription in QuickAddView)
+- 3-day calendar view (new view mode between weekly and daily)
+- Progress percentage on tasks (auto-calculate from subtasks or manual override, progress bar in header + row)
+- Task templates (save task structure as template, create from template in QuickAddView)
+- Task duplication (duplicate with subtasks from task detail settings)
+
+**Earlier additions (post Phase 8):**
+- Hierarchical parent-child task display with recursive accordion UI
+- Auto-nudge reminder system (per time-preference: daytime/nighttime/anytime)
+- Floating action button (always-visible task/note creation from any screen)
+- Navigation reset on tab switch (NavigationStack with NavigationPath)
+- Date-only scheduling with time preferences (anytime/daytime/nighttime)
+- Habits shown in Today view with inline check-in
+- Cross-type linking (task↔task, task↔note, note↔note, task↔habit)
+- Tabbed TaskDetailView with rich header card (status pill, priority badge, assignment avatars, due date, list, tags always visible) + 4 tabs (Notes, Children, Subtasks, Activity) + overflow settings sheet
+- Comprehensive activity tracking (21 action types across 9 files — logs every add, edit, and removal on a task)
+- Unified activity timeline — merged Comment model into ActivityEntry; comments are activity entries with threaded replies, displayed inline alongside system events in a single scrollable view with compose bar
 
 ---
 
@@ -599,6 +619,19 @@ its-time/
 | 2026-03-21 | App name | "Its Time" confirmed |
 | 2026-03-21 | Design direction | "Warm minimalism" — inspired by TickTick, Any.do, NotePlan, Notion, Due. See DESIGN-RESEARCH.md |
 | 2026-03-21 | Sync repo | github.com/MariusRossouw/its-time-sync |
+| 2026-03-22 | Parent-child task hierarchy | TaskItem self-referencing relationships for unlimited-depth task trees |
+| 2026-03-22 | Cross-type linking | Tasks, notes, and habits can be linked in parent-child relationships |
+| 2026-03-22 | Auto-nudge reminders | Separate reminder times per time preference (daytime/nighttime/anytime) |
+| 2026-03-22 | Navigation reset on tab switch | Each tab has its own NavigationPath, cleared on tab change |
+| 2026-03-22 | Date-only scheduling | Tasks can be assigned to a day with time preference instead of specific time |
+| 2026-03-23 | Tabbed TaskDetailView | Rich header card with key info always visible + 4 tabs (Notes, Children, Subtasks, Activity) |
+| 2026-03-23 | Comprehensive activity tracking | 21 action types logged across all task mutations via `TaskItem.logActivity()` |
+| 2026-03-23 | Unified activity timeline | Merged Comment model into ActivityEntry — comments are activity entries with `action: .commented` and threaded replies. Removed separate CommentsView; single ActivityLogView shows system events + comments inline with compose bar. Sync path changed from `data/comments/` to `data/activity/` |
+| 2026-03-23 | Attachments model | TaskAttachment SwiftData model with local file storage in app documents, thumbnail generation, and QuickLook preview |
+| 2026-03-23 | Voice input | SpeechRecognizer service using Apple Speech framework, mic button in QuickAddView with real-time transcription |
+| 2026-03-23 | 3-day calendar view | New ThreeDayCalendarView between weekly and daily modes, with same time grid + task block pattern |
+| 2026-03-23 | Task progress | Auto-calculated from subtask completion, manual override via slider, progress bar in header + task rows |
+| 2026-03-23 | Task templates & duplication | TaskTemplate model, save-as-template from detail, template picker in QuickAdd, one-click duplicate with subtasks |
 
 ---
 

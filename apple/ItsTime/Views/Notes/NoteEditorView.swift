@@ -9,9 +9,42 @@ struct NoteEditorView: View {
     @Query(sort: \Tag.sortOrder) private var allTags: [Tag]
 
     @State private var isPreview = false
+    @State private var showParentPicker = false
 
     var body: some View {
         VStack(spacing: 0) {
+            // Parent task breadcrumb
+            if let parent = note.parentTask {
+                Button {
+                    // Navigate handled by NavigationLink below
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.turn.up.left")
+                            .font(.caption)
+                        Text("Part of: \(parent.title)")
+                            .font(.caption)
+                            .lineLimit(1)
+                        Spacer()
+                        Button {
+                            let oldParent = note.parentTask?.title
+                            note.parentTask = nil
+                            note.updatedAt = Date()
+                            note.logActivity(action: .parentChanged, oldValue: oldParent, context: modelContext)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
+                    .background(Color.secondary.opacity(0.08))
+                }
+                .buttonStyle(.plain)
+            }
+
             // Title
             TextField("Note title", text: $note.title, axis: .vertical)
                 .font(.title2.bold())
@@ -62,6 +95,19 @@ struct NoteEditorView: View {
                         note.convertToTask()
                     }
 
+                    if note.parentTask != nil {
+                        Button("Unlink from Task", systemImage: "link.badge.minus") {
+                            let oldParent = note.parentTask?.title
+                            note.parentTask = nil
+                            note.updatedAt = Date()
+                            note.logActivity(action: .parentChanged, oldValue: oldParent, context: modelContext)
+                        }
+                    } else {
+                        Button("Link to Task", systemImage: "link.badge.plus") {
+                            showParentPicker = true
+                        }
+                    }
+
                     Divider()
 
                     Button("Delete Note", systemImage: "trash", role: .destructive) {
@@ -75,6 +121,11 @@ struct NoteEditorView: View {
         }
         .onDisappear {
             AutoSyncService.shared.notifyChange()
+        }
+        .sheet(isPresented: $showParentPicker) {
+            NavigationStack {
+                ParentTaskSearchView(task: note)
+            }
         }
     }
 

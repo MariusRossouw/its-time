@@ -20,6 +20,9 @@ final class Habit {
     @Relationship(deleteRule: .cascade, inverse: \HabitEntry.habit)
     var entries: [HabitEntry]
 
+    // Parent task link — allows habits to be children of tasks
+    var parentTask: TaskItem?
+
     init(
         name: String,
         habitDescription: String = "",
@@ -43,6 +46,7 @@ final class Habit {
         self.isArchived = false
         self.sortOrder = sortOrder
         self.entries = []
+        self.parentTask = nil
         self.createdAt = Date()
         self.updatedAt = Date()
     }

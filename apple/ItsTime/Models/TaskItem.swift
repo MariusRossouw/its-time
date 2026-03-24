@@ -60,8 +60,6 @@ final class TaskItem {
     var tags: [Tag]
     @Relationship(deleteRule: .cascade)
     var focusSessions: [FocusSession]
-    @Relationship(deleteRule: .cascade, inverse: \Comment.task)
-    var comments: [Comment]
     @Relationship(deleteRule: .cascade, inverse: \ActivityEntry.task)
     var activityLog: [ActivityEntry]
 
@@ -69,6 +67,17 @@ final class TaskItem {
     var parentTask: TaskItem?
     @Relationship(deleteRule: .nullify, inverse: \TaskItem.parentTask)
     var childTasks: [TaskItem]
+
+    // Linked habits (habits that are children of this task)
+    @Relationship(deleteRule: .nullify, inverse: \Habit.parentTask)
+    var childHabits: [Habit]
+
+    // Attachments
+    @Relationship(deleteRule: .cascade, inverse: \TaskAttachment.task)
+    var attachments: [TaskAttachment]
+
+    // Progress (0–100, nil = auto-calculate from subtasks)
+    var manualProgress: Int?
 
     init(
         title: String,
@@ -94,7 +103,6 @@ final class TaskItem {
         self.subtasks = []
         self.tags = []
         self.focusSessions = []
-        self.comments = []
         self.activityLog = []
         self.assignedTo = nil
         self.assignedToName = nil
@@ -115,6 +123,9 @@ final class TaskItem {
         self.recurrenceEndDate = nil
         self.parentTask = nil
         self.childTasks = []
+        self.childHabits = []
+        self.attachments = []
+        self.manualProgress = nil
         self.createdAt = Date()
         self.updatedAt = Date()
         self.deviceId = DeviceInfo.deviceId
@@ -133,6 +144,48 @@ final class TaskItem {
         (childTasks.filter { $0.status == .done }.count, childTasks.count)
     }
 
+    /// Progress 0–100. Uses manual override if set, otherwise auto-calculates from subtasks.
+    var progress: Int {
+        if let manual = manualProgress { return manual }
+        guard !subtasks.isEmpty else { return 0 }
+        let done = subtasks.filter(\.isCompleted).count
+        return Int(Double(done) / Double(subtasks.count) * 100)
+    }
+
+    /// Duplicate this task (with subtasks), inserted into the same list.
+    func duplicate(context: ModelContext) -> TaskItem {
+        let copy = TaskItem(
+            title: "\(title) (copy)",
+            taskDescription: taskDescription,
+            priority: priority,
+            dueDate: dueDate,
+            dueTime: dueTime,
+            startDate: startDate,
+            list: list,
+            sortOrder: sortOrder + 1
+        )
+        copy.timePreference = timePreference
+        copy.recurrenceType = recurrenceType
+        copy.recurrenceInterval = recurrenceInterval
+        copy.recurrenceWeekdays = recurrenceWeekdays
+        copy.recurrenceBasedOnCompletion = recurrenceBasedOnCompletion
+        copy.recurrenceEndDate = recurrenceEndDate
+        copy.reminderOffsets = reminderOffsets
+        copy.isNote = isNote
+        copy.tags = tags
+        copy.section = section
+        copy.parentTask = parentTask
+        context.insert(copy)
+
+        // Duplicate subtasks
+        for sub in subtasks.sorted(by: { $0.sortOrder < $1.sortOrder }) {
+            let subCopy = Subtask(title: sub.title, sortOrder: sub.sortOrder)
+            copy.subtasks.append(subCopy)
+            context.insert(subCopy)
+        }
+        return copy
+    }
+
     /// All ancestor IDs for cycle prevention
     var ancestorIds: Set<UUID> {
         var ids = Set<UUID>()
@@ -149,6 +202,16 @@ final class TaskItem {
             ids.formUnion(child.descendantIds())
         }
         return ids
+    }
+
+    /// Recursively assign a list to all descendants
+    func assignListToDescendants(_ newList: TaskList?) {
+        for child in childTasks {
+            child.list = newList
+            child.section = nil
+            child.updatedAt = Date()
+            child.assignListToDescendants(newList)
+        }
     }
 
     func markDone() {
@@ -184,6 +247,31 @@ final class TaskItem {
     func convertToTask() {
         isNote = false
         updatedAt = Date()
+    }
+
+    // MARK: - Activity Logging
+
+    func logActivity(
+        action: ActivityAction,
+        field: String? = nil,
+        oldValue: String? = nil,
+        newValue: String? = nil,
+        context: ModelContext
+    ) {
+        let descriptor = FetchDescriptor<Collaborator>(predicate: #Predicate { $0.isCurrentUser })
+        let currentUser = try? context.fetch(descriptor).first
+
+        let entry = ActivityEntry(
+            action: action,
+            field: field,
+            oldValue: oldValue,
+            newValue: newValue,
+            authorName: currentUser?.name ?? "You",
+            authorId: currentUser?.id ?? UUID(),
+            task: self
+        )
+        self.activityLog.append(entry)
+        context.insert(entry)
     }
 }
 

@@ -5,6 +5,8 @@ struct QuickAddNoteView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \TaskList.sortOrder) private var lists: [TaskList]
+    @Query(filter: #Predicate<Collaborator> { $0.isCurrentUser == true })
+    private var currentUsers: [Collaborator]
 
     @State private var title = ""
     @State private var selectedList: TaskList?
@@ -87,6 +89,13 @@ struct QuickAddNoteView: View {
             sortOrder: nextOrder
         )
         note.isNote = true
+
+        // Auto-assign to current user
+        if let currentUser = currentUsers.first {
+            note.assignedTo = currentUser.id
+            note.assignedToName = currentUser.name
+        }
+
         modelContext.insert(note)
         dismiss()
     }

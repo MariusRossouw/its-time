@@ -37,7 +37,7 @@ This document catalogs every testable flow in the app. Each test has a unique ID
 
 ---
 
-## 4. Today View (TodayViewUITests — 9/9)
+## 4. Today View (TodayViewUITests — 9/12)
 
 - [x] `TV-01` — Today tab shows tasks due today
 - [x] `TV-02` — Today shows empty state when no tasks
@@ -48,6 +48,9 @@ This document catalogs every testable flow in the app. Each test has a unique ID
 - [x] `TV-07` — Today view navigation bar exists
 - [x] `TV-08` — Inbox shows more than 5 tasks (cap removed)
 - [x] `TV-09` — Inbox DisclosureGroup shows count when many tasks
+- [ ] `TV-10` — Habits section shows today's habits with inline check-in
+- [ ] `TV-11` — Hierarchical tasks display with expand/collapse
+- [ ] `TV-12` — Child tasks are filtered from top-level lists
 
 ---
 
@@ -68,34 +71,57 @@ This document catalogs every testable flow in the app. Each test has a unique ID
 
 ---
 
-## 6. Task Detail (TaskDetailUITests — 25/26)
+## 6. Task Detail (TaskDetailUITests — 25/33)
 
+> **Note:** TaskDetailView was redesigned in March 2026 to use a rich header card
+> (status, priority, title, assignment, date, list, tags always visible) with 4 tabs
+> (Notes, Children, Subtasks, Activity) and a "More Options" overflow sheet.
+> Tests marked with ⚠️ may need UI test updates for the new layout.
+
+**Header card (always visible):**
 - [x] `TD-01` — Tap task → detail view opens with title field
 - [x] `TD-02` — Edit task title
-- [x] `TD-03` — Status picker exists
-- [x] `TD-04` — Priority picker exists
-- [x] `TD-05` — Due Date toggle exists
-- [x] `TD-06` — Start Date toggle exists
-- [x] `TD-07` — List picker is reachable by scrolling
-- [x] `TD-08` — Reminders section exists when due date set
-- [x] `TD-09` — Location Reminder section exists
-- [x] `TD-10` — Subtasks section with add field exists
-- [x] `TD-11` — Add subtask field works (type text)
-- [x] `TD-12` — Description section exists (comments reachable)
-- [x] `TD-13` — Comments navigation link exists
-- [x] `TD-14` — Activity navigation link exists
-- [x] `TD-15` — Info section shows created/updated dates
-- [x] `TD-16` — Navigate to Comments view
-- [x] `TD-17` — Navigate to Activity view
-- [x] `TD-18` — Due Date and Start Date toggles coexist
-- [ ] `TD-19` — Convert task to note (toolbar menu)
-- [x] `TD-20` — Nudge toggle exists on task without due date
-- [x] `TD-21` — Nudge toggle coexists with due-date reminders
-- [x] `TD-22` — Remind Me section exists with toggle
+- [x] `TD-03` — Status picker exists (now a Menu pill in header) ⚠️
+- [x] `TD-04` — Priority picker exists (now a Menu badge in header) ⚠️
+- [x] `TD-05` — Due Date tappable in header opens date editor sheet ⚠️
+- [x] `TD-07` — List picker is reachable (now a Menu in header) ⚠️
+- [x] `TD-25` — Parent task picker exists (now in More Options sheet) ⚠️
+- [x] `TD-26` — Child task shows parent breadcrumb in detail
+
+**Tab: Notes**
+- [x] `TD-12` — Description/notes section exists
+
+**Tab: Children**
 - [x] `TD-23` — Child Tasks section exists with add field
 - [x] `TD-24` — Add child task inline creates it
-- [x] `TD-25` — Parent task picker exists
-- [x] `TD-26` — Child task shows parent breadcrumb in detail
+- [ ] `TD-27` — Link existing task/note as child
+- [ ] `TD-28` — Link habit as child
+- [ ] `TD-29` — Unlink child task via swipe
+
+**Tab: Subtasks**
+- [x] `TD-10` — Subtasks section with add field exists
+- [x] `TD-11` — Add subtask field works (type text)
+
+**Tab: Activity**
+- [x] `TD-13` — Activity & Comments navigation link exists
+- [x] `TD-14` — Activity & Comments link reachable from description section
+- [x] `TD-15` — Info section shows created/updated dates
+- [x] `TD-16` — Navigate to unified Activity view (comments + events)
+- [x] `TD-17` — Navigate to Activity view
+- [ ] `TD-30` — Activity log records status change
+- [ ] `TD-31` — Activity log records tag add/remove
+- [ ] `TD-32` — Activity log records child add/remove
+
+**More Options sheet (toolbar ⋯):**
+- [x] `TD-06` — Start Date toggle exists (now in More Options) ⚠️
+- [x] `TD-08` — Reminders section exists when due date set (now in More Options) ⚠️
+- [x] `TD-09` — Location Reminder section exists (now in More Options) ⚠️
+- [ ] `TD-19` — Convert task to note (now in More Options)
+- [x] `TD-20` — Nudge toggle exists (now in More Options) ⚠️
+- [x] `TD-21` — Nudge toggle coexists with due-date reminders (now in More Options) ⚠️
+- [x] `TD-22` — Remind Me section exists with toggle (now in More Options) ⚠️
+- [ ] `TD-33` — Recurrence picker exists in More Options
+- [x] `TD-18` — Due Date and Start Date toggles coexist (now in separate locations) ⚠️
 
 ---
 
@@ -214,7 +240,7 @@ This document catalogs every testable flow in the app. Each test has a unique ID
 - [x] `CL-08` — Save disabled when fields empty
 - [x] `CL-09` — Create collaborator with name
 - [x] `CL-10` — Back button navigates away from collaborators
-- [x] `CL-11` — Comments view accessible from task detail
+- [x] `CL-11` — Unified Activity & Comments view accessible from task detail
 - [x] `CL-12` — Activity view accessible from task detail
 
 ---
@@ -340,30 +366,34 @@ This document catalogs every testable flow in the app. Each test has a unique ID
 
 ## Test Count Summary
 
-| Category | Implemented | Test File |
-|----------|-------------|-----------|
-| Onboarding | 5 | OnboardingUITests |
-| Quick Add Task | 8 | QuickAddTaskUITests |
-| Quick Add Note | 3 | QuickAddNoteUITests |
-| Today View | 7 | TodayViewUITests |
-| Task Lists | 12 | TaskListsUITests |
-| Task Detail | 22 | TaskDetailUITests |
-| Notes | 7 | NotesUITests |
-| Subtasks | 5 | SubtasksUITests |
-| Tags | 5 | TagsUITests |
-| Recurrence | 4 | RecurrenceUITests |
-| Calendar | 10 | CalendarUITests |
-| Focus Timer | 9 | FocusTimerUITests |
-| Habits | 12 | HabitsUITests + HabitDetailUITests |
-| Chat | 8 | ChatUITests |
-| Collaboration | 12 | CollaborationUITests |
-| Sync Profiles | 7 | SyncProfilesUITests |
-| Settings | 15 | SettingsUITests |
-| Search | 6 | SearchUITests |
-| Custom Filters | 5 | CustomFilterUITests |
-| Batch Edit | 3 | BatchEditUITests |
-| Advanced Views | 10 | AdvancedViewsUITests |
-| Automations | 6 | AutomationsUITests |
-| Folders | 5 | FoldersUITests |
-| List Management | 7 | ListManagementUITests |
-| **TOTAL** | **193** | **24 test files** |
+| Category | Implemented / Total | Test File |
+|----------|---------------------|-----------|
+| Onboarding | 5/5 | OnboardingUITests |
+| Quick Add Task | 8/8 | QuickAddTaskUITests |
+| Quick Add Note | 3/3 | QuickAddNoteUITests |
+| Today View | 9/12 | TodayViewUITests |
+| Task Lists | 12/12 | TaskListsUITests |
+| Task Detail | 25/33 | TaskDetailUITests |
+| Notes | 7/7 | NotesUITests |
+| Subtasks | 8/8 | SubtasksUITests |
+| Tags | 5/5 | TagsUITests |
+| Recurrence | 4/4 | RecurrenceUITests |
+| Calendar | 10/10 | CalendarUITests |
+| Focus Timer | 9/9 | FocusTimerUITests |
+| Habits | 12/12 | HabitsUITests + HabitDetailUITests |
+| Chat | 8/8 | ChatUITests |
+| Collaboration | 12/12 | CollaborationUITests |
+| Sync Profiles | 7/7 | SyncProfilesUITests |
+| Settings | 15/15 | SettingsUITests |
+| Search | 6/6 | SearchUITests |
+| Custom Filters | 5/5 | CustomFilterUITests |
+| Batch Edit | 3/3 | BatchEditUITests |
+| Advanced Views | 10/10 | AdvancedViewsUITests |
+| Automations | 6/6 | AutomationsUITests |
+| Folders | 5/5 | FoldersUITests |
+| List Management | 7/7 | ListManagementUITests |
+| **TOTAL** | **199/210** | **24 test files** |
+
+> **Note:** 11 new test cases added for hierarchical tasks, habits in Today, activity logging,
+> and the tabbed TaskDetailView. Some existing Task Detail tests (marked ⚠️) need UI test
+> updates due to the header card + tabs redesign.

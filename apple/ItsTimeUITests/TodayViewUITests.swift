@@ -29,6 +29,7 @@ final class TodayViewUITests: ItsTimeUITestBase {
         // No tasks created → should show "All Clear"
         let emptyState = app.staticTexts["All Clear"]
         XCTAssertTrue(waitFor(emptyState), "Empty state should show 'All Clear' when no tasks due today")
+        takeScreenshot("TV-02_today_empty")
     }
 
     // TV-03: Swipe to complete a task

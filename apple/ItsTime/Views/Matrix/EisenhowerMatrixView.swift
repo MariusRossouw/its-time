@@ -42,7 +42,7 @@ struct EisenhowerMatrixView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let halfHeight = (geo.size.height - 40) / 2 // reserve space for headers
+            let halfHeight = max(1, (geo.size.height - 40) / 2) // reserve space for headers
 
             VStack(spacing: 0) {
                 // Column headers
@@ -114,7 +114,6 @@ struct EisenhowerMatrixView: View {
             .padding(.horizontal, 4)
         }
         .navigationTitle("Eisenhower Matrix")
-        .taskNavigationDestination()
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -141,7 +140,9 @@ struct EisenhowerMatrixView: View {
             ScrollView {
                 VStack(spacing: 2) {
                     ForEach(tasks) { task in
-                        NavigationLink(value: task) {
+                        NavigationLink {
+                            TaskDetailView(task: task)
+                        } label: {
                             matrixTaskRow(task: task, color: color)
                         }
                         .buttonStyle(.plain)

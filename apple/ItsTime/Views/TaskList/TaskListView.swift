@@ -14,7 +14,7 @@ struct TaskListView: View {
     @State private var newSectionName = ""
 
     private var unsectionedTasks: [TaskItem] {
-        sorted(list.tasks.filter { $0.status == .todo && $0.section == nil })
+        sorted(list.tasks.filter { $0.status == .todo && !$0.isChildTask && $0.section == nil })
     }
 
     private var sortedSections: [ListSection] {
@@ -34,25 +34,7 @@ struct TaskListView: View {
                         if isEditing {
                             TaskRowView(task: task).tag(task)
                         } else {
-                            NavigationLink(value: task) {
-                                TaskRowView(task: task)
-                            }
-                            .tag(task)
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button { task.markDone() } label: {
-                                    Label("Done", systemImage: "checkmark")
-                                }
-                                .tint(.green)
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) { modelContext.delete(task) } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                Button { task.markWontDo() } label: {
-                                    Label("Won't Do", systemImage: "xmark")
-                                }
-                                .tint(.orange)
-                            }
+                            HierarchicalTaskRowView(task: task, depth: 0)
                         }
                     }
                     .onMove { from, to in
@@ -63,7 +45,7 @@ struct TaskListView: View {
                 // Sections
                 ForEach(sortedSections) { section in
                     let sectionTasks = sorted(
-                        list.tasks.filter { $0.status == .todo && $0.section?.id == section.id }
+                        list.tasks.filter { $0.status == .todo && !$0.isChildTask && $0.section?.id == section.id }
                     )
                     Section {
                         taskRows(sectionTasks)
@@ -99,10 +81,11 @@ struct TaskListView: View {
                                 if isEditing {
                                     TaskRowView(task: task).tag(task)
                                 } else {
-                                    NavigationLink(value: task) {
+                                    NavigationLink {
+                                        taskDestination(task)
+                                    } label: {
                                         TaskRowView(task: task)
                                     }
-                                    .tag(task)
                                     .swipeActions(edge: .leading) {
                                         Button {
                                             task.reopen()
@@ -118,7 +101,6 @@ struct TaskListView: View {
                 }
             }
             .listStyle(.plain)
-            .taskNavigationDestination()
             #if os(iOS)
             .environment(\.editMode, .constant(isEditing ? .active : .inactive))
             #endif
@@ -176,26 +158,17 @@ struct TaskListView: View {
             if isEditing {
                 TaskRowView(task: task).tag(task)
             } else {
-                NavigationLink(value: task) {
-                    TaskRowView(task: task)
-                }
-                .tag(task)
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    Button { task.markDone() } label: {
-                        Label("Done", systemImage: "checkmark")
-                    }
-                    .tint(.green)
-                }
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { modelContext.delete(task) } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    Button { task.markWontDo() } label: {
-                        Label("Won't Do", systemImage: "xmark")
-                    }
-                    .tint(.orange)
-                }
+                HierarchicalTaskRowView(task: task, depth: 0)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func taskDestination(_ task: TaskItem) -> some View {
+        if task.isNote {
+            NoteEditorView(note: task)
+        } else {
+            TaskDetailView(task: task)
         }
     }
 

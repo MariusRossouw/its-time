@@ -48,8 +48,18 @@ struct TaskRowView: View {
                     .foregroundStyle(task.status != .todo ? .secondary : .primary)
                     .lineLimit(2)
 
-                if task.dueDate != nil || !task.tags.isEmpty || task.timePreference != .anytime {
-                    HStack(spacing: 8) {
+                if task.dueDate != nil || !task.tags.isEmpty || task.timePreference != .anytime || task.priority == .high || task.priority == .medium {
+                    HStack(spacing: 6) {
+                        // Priority badge
+                        if task.priority == .high || task.priority == .medium {
+                            Text(task.priority == .high ? "High" : "Medium")
+                                .font(.system(size: 9, weight: .semibold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.priorityColor(task.priority).opacity(0.15))
+                                .foregroundStyle(Color.priorityColor(task.priority))
+                                .clipShape(Capsule())
+                        }
                         if task.timePreference != .anytime {
                             HStack(spacing: 3) {
                                 Image(systemName: task.timePreference.icon)
@@ -98,24 +108,37 @@ struct TaskRowView: View {
                 }
             }
 
-            // Child task count
+            // Child task progress
             if !task.childTasks.isEmpty {
                 let progress = task.childTaskProgress
-                HStack(spacing: 2) {
-                    Image(systemName: "rectangle.on.rectangle.angled")
-                        .font(.system(size: 10))
-                    Text("\(progress.done)/\(progress.total)")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                miniProgressBadge(
+                    done: progress.done,
+                    total: progress.total,
+                    icon: "rectangle.on.rectangle.angled",
+                    color: .blue
+                )
             }
 
-            // Subtask count
+            // Subtask progress
             if !task.subtasks.isEmpty {
                 let done = task.subtasks.filter(\.isCompleted).count
-                Text("\(done)/\(task.subtasks.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                miniProgressBadge(
+                    done: done,
+                    total: task.subtasks.count,
+                    icon: "checklist",
+                    color: .green
+                )
+            }
+
+            // Attachment count
+            if !task.attachments.isEmpty {
+                HStack(spacing: 3) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 9))
+                    Text("\(task.attachments.count)")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(.secondary)
             }
 
             // Parent indicator
@@ -140,6 +163,30 @@ struct TaskRowView: View {
         }
     }
 
+    private func miniProgressBadge(done: Int, total: Int, icon: String, color: Color) -> some View {
+        let fraction = total > 0 ? Double(done) / Double(total) : 0
+
+        return HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9))
+            Text("\(done)/\(total)")
+                .font(.system(size: 10, weight: .medium))
+            // Mini progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(color.opacity(0.15))
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(done == total ? .green : color)
+                        .frame(width: max(0, geo.size.width * fraction), height: 3)
+                }
+            }
+            .frame(width: 24, height: 3)
+        }
+        .foregroundStyle(done == total ? .green : .secondary)
+    }
+
     private func dueDateChip(_ date: Date) -> some View {
         let isToday = Calendar.current.isDateInToday(date)
         let isOverdue = !isToday && date < Date() && task.status == .todo
@@ -155,16 +202,27 @@ struct TaskRowView: View {
 
     private func formattedDate(_ date: Date) -> String {
         let calendar = Calendar.current
+        let dayLabel: String
+
         if calendar.isDateInToday(date) {
-            return "Today"
+            dayLabel = "Today"
         } else if calendar.isDateInTomorrow(date) {
-            return "Tomorrow"
+            dayLabel = "Tomorrow"
         } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
+            dayLabel = "Yesterday"
         } else {
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d"
-            return formatter.string(from: date)
+            dayLabel = formatter.string(from: date)
         }
+
+        // If a specific time is set, append it
+        if let dueTime = task.dueTime {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "h:mm a"
+            return "\(dayLabel), \(formatter.string(from: dueTime))"
+        }
+
+        return dayLabel
     }
 }

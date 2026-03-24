@@ -130,8 +130,8 @@ final class CollaborationUITests: ItsTimeUITestBase {
         XCTAssertTrue(waitFor(settingsNav, timeout: 5), "Should return to Settings after back")
     }
 
-    // CL-11: Comments view accessible from task detail
-    func testCommentsFromTaskDetail() {
+    // CL-11: Activity & Comments view accessible from task detail
+    func testActivityCommentsFromTaskDetail() {
         createTaskViaQuickAdd(title: "Collab Task", tapToday: true)
         tapTab("Today")
         let taskText = app.staticTexts["Collab Task"]
@@ -139,16 +139,16 @@ final class CollaborationUITests: ItsTimeUITestBase {
         taskText.tap()
         _ = waitFor(app.navigationBars["Task"])
 
-        // Scroll to Comments
+        // Scroll to Activity & Comments
         for _ in 0..<5 {
-            if app.staticTexts["Comments"].exists { break }
+            if app.staticTexts["Activity & Comments"].exists { break }
             app.swipeUp()
         }
-        let comments = app.staticTexts["Comments"]
-        XCTAssertTrue(comments.exists, "Comments link should be accessible")
-        comments.tap()
-        let commentsNav = app.navigationBars["Comments"]
-        XCTAssertTrue(waitFor(commentsNav), "Comments view should open")
+        let activity = app.staticTexts["Activity & Comments"]
+        XCTAssertTrue(activity.exists, "Activity & Comments link should be accessible")
+        activity.tap()
+        let activityNav = app.navigationBars["Activity"]
+        XCTAssertTrue(waitFor(activityNav), "Activity view should open")
     }
 
     // CL-12: Activity log accessible from task detail

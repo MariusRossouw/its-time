@@ -24,6 +24,8 @@ struct CalendarContainerView: View {
                     MonthlyCalendarView(selectedDate: $selectedDate, selectedTask: $selectedTask)
                 case .weekly:
                     WeeklyCalendarView(selectedDate: $selectedDate, selectedTask: $selectedTask)
+                case .threeDay:
+                    ThreeDayCalendarView(selectedDate: $selectedDate, selectedTask: $selectedTask)
                 case .daily:
                     DailyCalendarView(selectedDate: $selectedDate, selectedTask: $selectedTask)
                 case .agenda:
@@ -47,7 +49,7 @@ struct CalendarContainerView: View {
 }
 
 enum CalendarViewMode: String, CaseIterable, Identifiable {
-    case monthly, weekly, daily, agenda
+    case monthly, weekly, threeDay, daily, agenda
 
     var id: String { rawValue }
 
@@ -55,6 +57,7 @@ enum CalendarViewMode: String, CaseIterable, Identifiable {
         switch self {
         case .monthly: return "Month"
         case .weekly: return "Week"
+        case .threeDay: return "3 Day"
         case .daily: return "Day"
         case .agenda: return "Agenda"
         }

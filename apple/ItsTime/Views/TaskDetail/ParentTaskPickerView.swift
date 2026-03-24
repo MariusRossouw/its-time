@@ -3,11 +3,14 @@ import SwiftData
 
 struct ParentTaskPickerView: View {
     @Bindable var task: TaskItem
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         Section("Parent Task") {
             if let parent = task.parentTask {
-                NavigationLink(value: parent) {
+                NavigationLink {
+                    TaskDetailView(task: parent)
+                } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.turn.up.left")
                             .foregroundStyle(.secondary)
@@ -18,8 +21,10 @@ struct ParentTaskPickerView: View {
                 }
 
                 Button("Remove Parent", role: .destructive) {
+                    let oldParent = task.parentTask?.title
                     task.parentTask = nil
                     task.updatedAt = Date()
+                    task.logActivity(action: .parentChanged, oldValue: oldParent, context: modelContext)
                 }
             }
 
@@ -42,6 +47,7 @@ struct ParentTaskPickerView: View {
 struct ParentTaskSearchView: View {
     @Bindable var task: TaskItem
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.title) private var allTasks: [TaskItem]
     @State private var searchText = ""
 
@@ -55,7 +61,6 @@ struct ParentTaskSearchView: View {
     private var eligibleTasks: [TaskItem] {
         let excluded = excludedIds
         return allTasks.filter { candidate in
-            !candidate.isNote &&
             !excluded.contains(candidate.id) &&
             (searchText.isEmpty || candidate.title.localizedCaseInsensitiveContains(searchText))
         }
@@ -74,12 +79,21 @@ struct ParentTaskSearchView: View {
                     Button {
                         task.parentTask = candidate
                         task.updatedAt = Date()
+                        task.logActivity(action: .parentChanged, newValue: candidate.title, context: modelContext)
                         dismiss()
                     } label: {
                         HStack(spacing: 8) {
-                            Circle()
-                                .fill(Color.priorityColor(candidate.priority))
-                                .frame(width: 8, height: 8)
+                            if candidate.isNote {
+                                Image(systemName: "doc.text")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 12)
+                            } else {
+                                Circle()
+                                    .fill(Color.priorityColor(candidate.priority))
+                                    .frame(width: 8, height: 8)
+                                    .frame(width: 12)
+                            }
                             Text(candidate.title)
                                 .lineLimit(1)
                                 .foregroundStyle(.primary)

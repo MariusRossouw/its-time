@@ -5,12 +5,20 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Collaborator.name) private var collaborators: [Collaborator]
+    @Query(sort: \TaskItem.sortOrder) private var allTasks: [TaskItem]
     @State private var selectedSmartList: SmartList? = .today
     @State private var selectedList: TaskList?
     @State private var selectedTask: TaskItem?
     @State private var showQuickAdd = false
     @State private var showNewNote = false
+    @State private var showNewHabit = false
+    @State private var showAddMenu = false
     @State private var selectedCustomFilter: CustomFilter?
+    @State private var selectedTab: AppTab = .today
+    @State private var todayPath = NavigationPath()
+    @State private var tasksPath = NavigationPath()
+    @State private var chatPath = NavigationPath()
+    @State private var settingsPath = NavigationPath()
 
     private var hasCurrentUser: Bool {
         collaborators.contains { $0.isCurrentUser }
@@ -23,6 +31,32 @@ struct ContentView: View {
                     ensureInboxExists()
                     migrateToSyncProfiles()
                     AutoSyncService.shared.start(context: modelContext)
+                    NotificationService.shared.scheduleAutoNudges(tasks: allTasks)
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .taskMarkedDoneFromNotification)) { notification in
+                    handleNotificationAction(notification) { $0.markDone() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .taskMarkedWontDoFromNotification)) { notification in
+                    handleNotificationAction(notification) { $0.markWontDo() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .taskDeletedFromNotification)) { notification in
+                    handleNotificationAction(notification) { task in
+                        modelContext.delete(task)
+                    }
+                }
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
+                .sheet(isPresented: $showQuickAdd) {
+                    QuickAddView()
+                }
+                .sheet(isPresented: $showNewNote) {
+                    QuickAddNoteView()
+                }
+                .sheet(isPresented: $showNewHabit) {
+                    NavigationStack {
+                        HabitEditorView()
+                    }
                 }
         } else {
             OnboardingView()
@@ -47,83 +81,95 @@ struct ContentView: View {
     // MARK: - iPhone: Tab bar + navigation stack
 
     private var iPhoneLayout: some View {
-        TabView {
-            Tab("Today", systemImage: "sun.max") {
-                NavigationStack {
-                    TodayView(selectedTask: $selectedTask)
-                        .toolbar {
-                            ToolbarItem(placement: .primaryAction) {
-                                Menu {
-                                    Button("New Task", systemImage: "checklist") {
-                                        showQuickAdd = true
-                                    }
-                                    .accessibilityIdentifier("menu_new_task")
-                                    Button("New Note", systemImage: "doc.text") {
-                                        showNewNote = true
-                                    }
-                                    .accessibilityIdentifier("menu_new_note")
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title2)
-                                }
-                                .accessibilityIdentifier("plus_menu")
-                            }
-                        }
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                Tab("Today", systemImage: "sun.max", value: .today) {
+                    NavigationStack(path: $todayPath) {
+                        TodayView(selectedTask: $selectedTask)
+                    }
                 }
-            }
-            Tab("Tasks", systemImage: "checklist") {
-                NavigationStack {
-                    TaskListsView(
-                        selectedSmartList: $selectedSmartList,
-                        selectedList: $selectedList,
-                        selectedTask: $selectedTask
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Menu {
-                                Button("New Task", systemImage: "checklist") {
-                                    showQuickAdd = true
-                                }
-                                .accessibilityIdentifier("menu_new_task")
-                                Button("New Note", systemImage: "doc.text") {
-                                    showNewNote = true
-                                }
-                                .accessibilityIdentifier("menu_new_note")
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                            }
-                            .accessibilityIdentifier("plus_menu")
-                        }
+                Tab("Tasks", systemImage: "checklist", value: .tasks) {
+                    NavigationStack(path: $tasksPath) {
+                        TaskListsView(
+                            selectedSmartList: $selectedSmartList,
+                            selectedList: $selectedList,
+                            selectedTask: $selectedTask
+                        )
+                    }
+                }
+                Tab("Calendar", systemImage: "calendar", value: .calendar) {
+                    CalendarContainerView()
+                }
+                Tab("Habits", systemImage: "leaf", value: .habits) {
+                    HabitListView()
+                }
+                Tab("Chat", systemImage: "bubble.left.and.bubble.right", value: .chat) {
+                    NavigationStack(path: $chatPath) {
+                        ChatListView()
+                    }
+                }
+                Tab("Focus", systemImage: "timer", value: .focus) {
+                    FocusTimerView()
+                }
+                Tab("Settings", systemImage: "gear", value: .settings) {
+                    NavigationStack(path: $settingsPath) {
+                        SettingsView()
                     }
                 }
             }
-            Tab("Calendar", systemImage: "calendar") {
-                CalendarContainerView()
+            .onChange(of: selectedTab) {
+                // Reset navigation to root when switching tabs
+                todayPath = NavigationPath()
+                tasksPath = NavigationPath()
+                chatPath = NavigationPath()
+                settingsPath = NavigationPath()
             }
-            Tab("Habits", systemImage: "leaf") {
-                HabitListView()
-            }
-            Tab("Chat", systemImage: "bubble.left.and.bubble.right") {
-                NavigationStack {
-                    ChatListView()
-                }
-            }
-            Tab("Focus", systemImage: "timer") {
-                FocusTimerView()
-            }
-            Tab("Settings", systemImage: "gear") {
-                NavigationStack {
-                    SettingsView()
-                }
-            }
+
+            // Floating add button — always visible above tab bar
+            floatingAddButton
+                .padding(.bottom, 60)
         }
-        .sheet(isPresented: $showQuickAdd) {
-            QuickAddView()
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "itstime" else { return }
+        switch url.host {
+        case "add-task":
+            showQuickAdd = true
+        case "add-note":
+            showNewNote = true
+        case "add-habit":
+            showNewHabit = true
+        default:
+            break
         }
-        .sheet(isPresented: $showNewNote) {
-            QuickAddNoteView()
+    }
+
+    private var floatingAddButton: some View {
+        Menu {
+            Button {
+                showQuickAdd = true
+            } label: {
+                Label("New Task", systemImage: "checklist")
+            }
+            .accessibilityIdentifier("fab_new_task")
+
+            Button {
+                showNewNote = true
+            } label: {
+                Label("New Note", systemImage: "doc.text")
+            }
+            .accessibilityIdentifier("fab_new_note")
+        } label: {
+            Image(systemName: "plus")
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(Color.accentColor)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
         }
+        .accessibilityIdentifier("floating_add_button")
     }
 
     // MARK: - iPad: Sidebar + content
@@ -140,12 +186,6 @@ struct ContentView: View {
             NavigationStack {
                 detailContent
             }
-        }
-        .sheet(isPresented: $showQuickAdd) {
-            QuickAddView()
-        }
-        .sheet(isPresented: $showNewNote) {
-            QuickAddNoteView()
         }
         .overlay(alignment: .bottomTrailing) {
             QuickAddButton(showQuickAdd: $showQuickAdd)
@@ -194,12 +234,6 @@ struct ContentView: View {
                     Label("New", systemImage: "plus")
                 }
             }
-        }
-        .sheet(isPresented: $showQuickAdd) {
-            QuickAddView()
-        }
-        .sheet(isPresented: $showNewNote) {
-            QuickAddNoteView()
         }
     }
     #endif
@@ -263,6 +297,19 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Notification action handler
+
+    private func handleNotificationAction(_ notification: Notification, action: (TaskItem) -> Void) {
+        guard let taskIdString = notification.userInfo?["taskId"] as? String,
+              let taskId = UUID(uuidString: taskIdString) else { return }
+
+        let descriptor = FetchDescriptor<TaskItem>(
+            predicate: #Predicate { $0.id == taskId }
+        )
+        guard let task = try? modelContext.fetch(descriptor).first else { return }
+        action(task)
+    }
+
     // MARK: - Inbox bootstrap
 
     private func ensureInboxExists() {
@@ -282,6 +329,7 @@ enum SmartList: String, CaseIterable, Identifiable {
     case today
     case next7Days
     case all
+    case notes
     case assignedToMe
     case suggested
     case matrix
@@ -296,6 +344,7 @@ enum SmartList: String, CaseIterable, Identifiable {
         case .today: return "Today"
         case .next7Days: return "Next 7 Days"
         case .all: return "All"
+        case .notes: return "Notes"
         case .assignedToMe: return "Assigned to Me"
         case .suggested: return "Suggested"
         case .matrix: return "Matrix"
@@ -310,6 +359,7 @@ enum SmartList: String, CaseIterable, Identifiable {
         case .today: return "sun.max"
         case .next7Days: return "calendar"
         case .all: return "tray.full"
+        case .notes: return "doc.text"
         case .assignedToMe: return "person.circle"
         case .suggested: return "lightbulb"
         case .matrix: return "square.grid.2x2"
@@ -327,4 +377,8 @@ enum SmartList: String, CaseIterable, Identifiable {
     static var viewLists: [SmartList] {
         [.suggested, .matrix, .kanban, .timeline]
     }
+}
+
+enum AppTab: Hashable {
+    case today, tasks, calendar, habits, chat, focus, settings
 }

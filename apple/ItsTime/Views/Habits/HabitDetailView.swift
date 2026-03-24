@@ -5,7 +5,9 @@ struct HabitDetailView: View {
     @Bindable var habit: Habit
     @Environment(\.modelContext) private var modelContext
 
+    @Query(sort: \TaskItem.sortOrder) private var allTasks: [TaskItem]
     @State private var showEditor = false
+    @State private var showParentPicker = false
 
     private let calendar = Calendar.current
     private let today = Date()
@@ -13,6 +15,11 @@ struct HabitDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Parent task link
+                if let parent = habit.parentTask {
+                    parentTaskCard(parent)
+                }
+
                 checkInCard
                 statsCards
                 punchCard
@@ -30,6 +37,21 @@ struct HabitDetailView: View {
                     Button("Edit", systemImage: "pencil") {
                         showEditor = true
                     }
+
+                    if habit.parentTask != nil {
+                        Button("Unlink from Task", systemImage: "link.badge.minus", role: .destructive) {
+                            if let parent = habit.parentTask {
+                                parent.logActivity(action: .habitUnlinked, oldValue: habit.name, context: modelContext)
+                            }
+                            habit.parentTask = nil
+                            habit.updatedAt = Date()
+                        }
+                    } else {
+                        Button("Link to Task", systemImage: "link.badge.plus") {
+                            showParentPicker = true
+                        }
+                    }
+
                     Button(
                         habit.isArchived ? "Unarchive" : "Archive",
                         systemImage: habit.isArchived ? "tray.and.arrow.up" : "archivebox"
@@ -45,6 +67,41 @@ struct HabitDetailView: View {
         .sheet(isPresented: $showEditor) {
             HabitEditorView(habit: habit)
         }
+        .sheet(isPresented: $showParentPicker) {
+            NavigationStack {
+                HabitParentTaskPickerView(habit: habit)
+            }
+        }
+    }
+
+    // MARK: - Parent Task Card
+
+    private func parentTaskCard(_ parent: TaskItem) -> some View {
+        NavigationLink {
+            TaskDetailView(task: parent)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.turn.up.left")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Part of")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(parent.title)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color.gray.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Check-in Card

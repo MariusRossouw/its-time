@@ -25,11 +25,39 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Se
             )
             try? await center.add(request)
 
-        case "MARK_DONE":
-            // Post notification for the app to handle marking the task done
+        case "MARK_DONE", "NUDGE_DONE":
             await MainActor.run {
                 NotificationCenter.default.post(
                     name: .taskMarkedDoneFromNotification,
+                    object: nil,
+                    userInfo: ["taskId": taskIdString]
+                )
+            }
+
+        case "NUDGE_LATER":
+            // Snooze auto-nudge for 1 hour
+            let content = response.notification.request.content.mutableCopy() as! UNMutableNotificationContent
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: false)
+            let request = UNNotificationRequest(
+                identifier: "\(taskIdString)-autonudge-snooze-\(Int(Date().timeIntervalSince1970))",
+                content: content,
+                trigger: trigger
+            )
+            try? await center.add(request)
+
+        case "NUDGE_WONT_DO":
+            await MainActor.run {
+                NotificationCenter.default.post(
+                    name: .taskMarkedWontDoFromNotification,
+                    object: nil,
+                    userInfo: ["taskId": taskIdString]
+                )
+            }
+
+        case "NUDGE_DELETE":
+            await MainActor.run {
+                NotificationCenter.default.post(
+                    name: .taskDeletedFromNotification,
                     object: nil,
                     userInfo: ["taskId": taskIdString]
                 )
@@ -51,4 +79,6 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Se
 
 extension Notification.Name {
     static let taskMarkedDoneFromNotification = Notification.Name("taskMarkedDoneFromNotification")
+    static let taskMarkedWontDoFromNotification = Notification.Name("taskMarkedWontDoFromNotification")
+    static let taskDeletedFromNotification = Notification.Name("taskDeletedFromNotification")
 }

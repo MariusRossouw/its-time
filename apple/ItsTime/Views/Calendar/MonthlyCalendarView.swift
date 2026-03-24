@@ -11,7 +11,14 @@ struct MonthlyCalendarView: View {
 
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
-    private let dayNames = ["S", "M", "T", "W", "T", "F", "S"]
+    private let dayNames = ["M", "T", "W", "T", "F", "S", "S"]
+
+    // Use Monday-start week
+    private var mondayCalendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = 2 // Monday
+        return cal
+    }
 
     private var monthTitle: String {
         let formatter = DateFormatter()
@@ -20,39 +27,52 @@ struct MonthlyCalendarView: View {
     }
 
     private var daysInMonth: [Date?] {
-        guard let range = calendar.range(of: .day, in: .month, for: selectedDate),
-              let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedDate))
+        let cal = mondayCalendar
+        guard let range = cal.range(of: .day, in: .month, for: selectedDate),
+              let firstDay = cal.date(from: cal.dateComponents([.year, .month], from: selectedDate))
         else { return [] }
 
-        let firstWeekday = calendar.component(.weekday, from: firstDay)
-        var days: [Date?] = Array(repeating: nil, count: firstWeekday - 1)
+        // Weekday offset for Monday-start (1=Mon..7=Sun)
+        let weekday = cal.component(.weekday, from: firstDay)
+        let offset = (weekday - cal.firstWeekday + 7) % 7
+        var days: [Date?] = Array(repeating: nil, count: offset)
 
         for day in range {
-            if let date = calendar.date(byAdding: .day, value: day - 1, to: firstDay) {
+            if let date = cal.date(byAdding: .day, value: day - 1, to: firstDay) {
                 days.append(date)
             }
         }
         return days
     }
 
-    private func tasksForDate(_ date: Date) -> [TaskItem] {
-        allTasks.filter { task in
-            guard let due = task.dueDate else { return false }
-            return calendar.isDate(due, inSameDayAs: date)
-        }.sorted { lhs, rhs in
-            // Active tasks first, then completed
-            if lhs.status == .todo && rhs.status != .todo { return true }
-            if lhs.status != .todo && rhs.status == .todo { return false }
-            return (lhs.dueDate ?? .distantFuture) < (rhs.dueDate ?? .distantFuture)
-        }
-    }
-
-    private func activeTasksForDate(_ date: Date) -> [TaskItem] {
-        tasksForDate(date).filter { $0.status == .todo }
+    private var selectedWeekDates: [Date] {
+        let cal = mondayCalendar
+        let startOfWeek = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate))!
+        return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: startOfWeek) }
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
+            // Mini calendar
+            miniCalendar
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+
+            Divider()
+                .padding(.top, 8)
+
+            // Week summary
+            weekSummary
+        }
+        .sheet(item: $quickAddDate) { date in
+            QuickAddView(initialDueDate: date)
+        }
+    }
+
+    // MARK: - Mini Calendar Grid
+
+    private var miniCalendar: some View {
+        VStack(spacing: 8) {
             // Month nav
             HStack {
                 Button { changeMonth(-1) } label: {
@@ -65,93 +85,178 @@ struct MonthlyCalendarView: View {
                     Image(systemName: "chevron.right")
                 }
             }
-            .padding(.horizontal)
 
             // Day headers
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(dayNames, id: \.self) { name in
-                    Text(name)
+            LazyVGrid(columns: columns, spacing: 2) {
+                ForEach(dayNames.indices, id: \.self) { i in
+                    Text(dayNames[i])
                         .font(.caption2.bold())
                         .foregroundStyle(.secondary)
                 }
             }
 
             // Days grid
-            LazyVGrid(columns: columns, spacing: 4) {
+            LazyVGrid(columns: columns, spacing: 2) {
                 ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, date in
                     if let date {
-                        let tasks = activeTasksForDate(date)
                         let isToday = calendar.isDateInToday(date)
                         let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+                        let hasTasks = tasksForDate(date).contains { $0.status == .todo }
 
                         Button {
                             selectedDate = date
                         } label: {
-                            VStack(spacing: 2) {
+                            VStack(spacing: 1) {
                                 Text("\(calendar.component(.day, from: date))")
-                                    .font(.subheadline)
+                                    .font(.caption)
                                     .fontWeight(isToday ? .bold : .regular)
+                                    .foregroundStyle(isSelected ? .white : isToday ? .accentColor : .primary)
 
-                                // Task dots
-                                HStack(spacing: 2) {
-                                    ForEach(tasks.prefix(3).indices, id: \.self) { i in
-                                        Circle()
-                                            .fill(Color.priorityColor(tasks[i].priority))
-                                            .frame(width: 4, height: 4)
-                                    }
-                                }
-                                .frame(height: 6)
+                                Circle()
+                                    .fill(hasTasks && !isSelected ? Color.accentColor : .clear)
+                                    .frame(width: 3, height: 3)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 4)
                             .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(isSelected ? Color.accentColor.opacity(0.15) : .clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(isToday ? Color.accentColor : .clear, lineWidth: 1.5)
+                                Circle()
+                                    .fill(isSelected ? Color.accentColor : .clear)
+                                    .frame(width: 30, height: 30)
                             )
                         }
                         .buttonStyle(.plain)
-                        .onLongPressGesture {
-                            // Default to 9 AM on the selected day
-                            var comps = calendar.dateComponents([.year, .month, .day], from: date)
-                            comps.hour = 9
-                            comps.minute = 0
-                            quickAddDate = calendar.date(from: comps)
-                        }
                     } else {
-                        Color.clear.frame(height: 40)
+                        Color.clear.frame(height: 28)
                     }
                 }
             }
+        }
+    }
 
-            Divider()
+    // MARK: - Week Summary
 
-            // Selected day's tasks
-            let dayTasks = tasksForDate(selectedDate)
+    private var weekSummary: some View {
+        let weekDates = selectedWeekDates
+
+        // Split into 2 columns: left (Mon/Tue/Wed/Thu) and right (blank/Fri/Sat/Sun)
+        // Actually, inspired by the screenshot: 2-column grid, each day as a row with tasks
+        return ScrollView {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 0) {
+                ForEach(weekDates, id: \.self) { date in
+                    daySummaryCard(date: date)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder
+    private func daySummaryCard(date: Date) -> some View {
+        let isToday = calendar.isDateInToday(date)
+        let dayTasks = tasksForDate(date).filter { $0.status == .todo }
+
+        VStack(alignment: .leading, spacing: 4) {
+            // Day header
+            HStack(spacing: 4) {
+                Text(shortDayName(date))
+                    .font(.caption.bold())
+                    .foregroundStyle(isToday ? Color.accentColor : .secondary)
+                Text("\(calendar.component(.day, from: date))")
+                    .font(.caption.bold())
+                    .foregroundStyle(isToday ? Color.accentColor : .primary)
+                Spacer()
+            }
+
             if dayTasks.isEmpty {
-                Text("No tasks on this day")
-                    .foregroundStyle(.secondary)
-                    .padding()
+                Text("No tasks")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.vertical, 2)
             } else {
-                List {
-                    ForEach(dayTasks) { task in
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(dayTasks.prefix(5)) { task in
                         NavigationLink(value: task) {
-                            TaskRowView(task: task)
+                            monthTaskRow(task)
                         }
+                        .buttonStyle(.plain)
+                    }
+                    if dayTasks.count > 5 {
+                        Text("+\(dayTasks.count - 5) more")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .listStyle(.plain)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isToday ? Color.accentColor.opacity(0.05) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(isToday ? Color.accentColor.opacity(0.2) : Color.clear, lineWidth: 1)
+        )
+        .onLongPressGesture {
+            var comps = calendar.dateComponents([.year, .month, .day], from: date)
+            comps.hour = 9
+            comps.minute = 0
+            quickAddDate = calendar.date(from: comps)
+        }
+    }
+
+    private func monthTaskRow(_ task: TaskItem) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 1)
+                .fill(taskColor(task))
+                .frame(width: 3, height: 14)
+
+            if let due = task.dueDate {
+                let hour = calendar.component(.hour, from: due)
+                let minute = calendar.component(.minute, from: due)
+                if hour != 0 || minute != 0 {
+                    Text(due, format: .dateTime.hour(.defaultDigits(amPM: .abbreviated)).minute())
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 38, alignment: .leading)
+                }
             }
 
-            Spacer()
+            Text(task.title)
+                .font(.caption2)
+                .lineLimit(1)
+                .foregroundStyle(.primary)
+
+            Spacer(minLength: 0)
         }
-        .padding(.top)
-        .sheet(item: $quickAddDate) { date in
-            QuickAddView(initialDueDate: date)
+    }
+
+    // MARK: - Helpers
+
+    private func taskColor(_ task: TaskItem) -> Color {
+        if let list = task.list {
+            return Color(hex: list.color)
         }
+        return Color.priorityColor(task.priority)
+    }
+
+    private func tasksForDate(_ date: Date) -> [TaskItem] {
+        allTasks.filter { task in
+            guard let due = task.dueDate else { return false }
+            return calendar.isDate(due, inSameDayAs: date)
+        }.sorted { lhs, rhs in
+            if lhs.status == .todo && rhs.status != .todo { return true }
+            if lhs.status != .todo && rhs.status == .todo { return false }
+            return (lhs.dueDate ?? .distantFuture) < (rhs.dueDate ?? .distantFuture)
+        }
+    }
+
+    private func shortDayName(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "EEE"
+        return df.string(from: date)
     }
 
     private func changeMonth(_ delta: Int) {

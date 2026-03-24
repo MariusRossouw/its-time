@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-struct WeeklyCalendarView: View {
+struct ThreeDayCalendarView: View {
     @Binding var selectedDate: Date
     @Binding var selectedTask: TaskItem?
 
@@ -10,18 +10,17 @@ struct WeeklyCalendarView: View {
     @State private var now = Date()
 
     private let calendar = Calendar.current
-    private let hourHeight: CGFloat = 52
-    private let timeColumnWidth: CGFloat = 44
+    private let hourHeight: CGFloat = 60
+    private let timeColumnWidth: CGFloat = 48
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
-    private var weekDates: [Date] {
-        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate))!
-        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: startOfWeek) }
+    private var threeDates: [Date] {
+        (-1...1).compactMap { calendar.date(byAdding: .day, value: $0, to: selectedDate) }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            weekNavBar
+            navBar
             dayHeaders
             Divider()
             timeGrid
@@ -34,13 +33,13 @@ struct WeeklyCalendarView: View {
 
     // MARK: - Nav Bar
 
-    private var weekNavBar: some View {
+    private var navBar: some View {
         HStack {
-            Button { changeWeek(-1) } label: { Image(systemName: "chevron.left") }
+            Button { changeDay(-3) } label: { Image(systemName: "chevron.left") }
             Spacer()
-            Text(weekTitle).font(.headline)
+            Text(rangeTitle).font(.headline)
             Spacer()
-            Button { changeWeek(1) } label: { Image(systemName: "chevron.right") }
+            Button { changeDay(3) } label: { Image(systemName: "chevron.right") }
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -51,9 +50,20 @@ struct WeeklyCalendarView: View {
     private var dayHeaders: some View {
         HStack(spacing: 0) {
             Text("").frame(width: timeColumnWidth)
-            ForEach(weekDates, id: \.self) { date in
-                WeeklyDayHeader(date: date, calendar: calendar)
-                    .frame(maxWidth: .infinity)
+            ForEach(threeDates, id: \.self) { date in
+                let isToday = calendar.isDateInToday(date)
+                VStack(spacing: 2) {
+                    Text(dayName(date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(calendar.component(.day, from: date))")
+                        .font(.title3.bold())
+                        .foregroundStyle(isToday ? .white : .primary)
+                        .frame(width: 36, height: 36)
+                        .background(isToday ? Color.accentColor : .clear)
+                        .clipShape(Circle())
+                }
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(.bottom, 4)
@@ -65,7 +75,7 @@ struct WeeklyCalendarView: View {
         ScrollView {
             ScrollViewReader { proxy in
                 ZStack(alignment: .topLeading) {
-                    // Grid lines and hour labels
+                    // Hour grid lines
                     VStack(spacing: 0) {
                         ForEach(0..<24, id: \.self) { hour in
                             HStack(alignment: .top, spacing: 0) {
@@ -90,16 +100,16 @@ struct WeeklyCalendarView: View {
                     HStack(spacing: 0) {
                         Color.clear.frame(width: timeColumnWidth)
 
-                        HStack(spacing: 1) {
-                            ForEach(weekDates, id: \.self) { date in
-                                weekDayColumn(date: date)
+                        HStack(spacing: 2) {
+                            ForEach(threeDates, id: \.self) { date in
+                                dayColumn(date: date)
                                     .frame(maxWidth: .infinity)
                             }
                         }
                     }
 
                     // Current time indicator
-                    if weekDates.contains(where: { calendar.isDateInToday($0) }) {
+                    if threeDates.contains(where: { calendar.isDateInToday($0) }) {
                         currentTimeIndicator
                     }
                 }
@@ -111,17 +121,17 @@ struct WeeklyCalendarView: View {
         }
     }
 
-    // MARK: - Week Day Column (task blocks)
+    // MARK: - Day Column
 
     @ViewBuilder
-    private func weekDayColumn(date: Date) -> some View {
+    private func dayColumn(date: Date) -> some View {
         let dayTasks = allTasks.filter { task in
             guard let due = task.dueDate, task.status == .todo else { return false }
             return calendar.isDate(due, inSameDayAs: date)
         }
 
         ZStack(alignment: .topLeading) {
-            // Tap targets for each hour
+            // Tap targets per hour
             VStack(spacing: 0) {
                 ForEach(0..<24, id: \.self) { hour in
                     Color.clear
@@ -138,44 +148,58 @@ struct WeeklyCalendarView: View {
                 }
             }
 
-            // Task blocks positioned at their time
+            // Task blocks
             ForEach(dayTasks) { task in
                 if let due = task.dueDate {
                     let hour = calendar.component(.hour, from: due)
                     let minute = calendar.component(.minute, from: due)
                     let topOffset = CGFloat(hour) * hourHeight + CGFloat(minute) / 60.0 * hourHeight
-                    let blockHeight = max(hourHeight * 0.8, 24)
 
                     NavigationLink(value: task) {
-                        weekTaskBlock(task)
+                        threeDayTaskBlock(task)
                     }
                     .buttonStyle(.plain)
-                    .frame(height: blockHeight)
+                    .frame(height: max(hourHeight * 0.8, 28))
                     .offset(y: topOffset + 2)
-                    .padding(.horizontal, 1)
+                    .padding(.horizontal, 2)
                 }
             }
         }
         .frame(height: hourHeight * 24)
     }
 
-    private func weekTaskBlock(_ task: TaskItem) -> some View {
+    private func threeDayTaskBlock(_ task: TaskItem) -> some View {
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 1)
                 .fill(taskColor(task))
                 .frame(width: 3)
 
-            Text(task.title)
-                .font(.system(size: 9))
-                .lineLimit(2)
-                .padding(.horizontal, 3)
-                .padding(.vertical, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                if let due = task.dueDate {
+                    let hour = calendar.component(.hour, from: due)
+                    let minute = calendar.component(.minute, from: due)
+                    if hour != 0 || minute != 0 {
+                        Text(due, format: .dateTime.hour(.defaultDigits(amPM: .abbreviated)).minute())
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(task.title)
+                    .font(.caption)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 3)
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(taskColor(task).opacity(0.2))
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .background(taskColor(task).opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(taskColor(task).opacity(0.25), lineWidth: 0.5)
+        )
     }
 
     // MARK: - Current Time Indicator
@@ -185,22 +209,19 @@ struct WeeklyCalendarView: View {
         let minute = calendar.component(.minute, from: now)
         let yOffset = CGFloat(hour) * hourHeight + CGFloat(minute) / 60.0 * hourHeight
 
-        // Find which column index is today
-        let todayIndex = weekDates.firstIndex(where: { calendar.isDateInToday($0) }) ?? 0
+        let todayIndex = threeDates.firstIndex(where: { calendar.isDateInToday($0) }) ?? 0
 
         return GeometryReader { geo in
             let totalColumnWidth = geo.size.width - timeColumnWidth
-            let dayWidth = totalColumnWidth / 7.0
+            let dayWidth = totalColumnWidth / 3.0
             let xStart = timeColumnWidth + dayWidth * CGFloat(todayIndex)
 
             ZStack(alignment: .leading) {
-                // Red line across today's column
                 Rectangle()
                     .fill(Color.red)
                     .frame(width: dayWidth, height: 1.5)
                     .offset(x: xStart, y: yOffset)
 
-                // Red dot
                 Circle()
                     .fill(Color.red)
                     .frame(width: 8, height: 8)
@@ -226,46 +247,24 @@ struct WeeklyCalendarView: View {
         return "\(hour - 12) PM"
     }
 
-    private var weekTitle: String {
-        guard let first = weekDates.first, let last = weekDates.last else { return "" }
+    private func dayName(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "EEE"
+        return df.string(from: date)
+    }
+
+    private var rangeTitle: String {
+        guard let first = threeDates.first, let last = threeDates.last else { return "" }
         let df = DateFormatter()
         df.dateFormat = "MMM d"
         return "\(df.string(from: first)) – \(df.string(from: last))"
     }
 
-    private func changeWeek(_ delta: Int) {
+    private func changeDay(_ delta: Int) {
         withAnimation {
-            if let newDate = calendar.date(byAdding: .weekOfYear, value: delta, to: selectedDate) {
+            if let newDate = calendar.date(byAdding: .day, value: delta, to: selectedDate) {
                 selectedDate = newDate
             }
         }
-    }
-}
-
-// MARK: - Day Header
-
-struct WeeklyDayHeader: View {
-    let date: Date
-    let calendar: Calendar
-
-    var body: some View {
-        let isToday = calendar.isDateInToday(date)
-        VStack(spacing: 2) {
-            Text(dayLetter)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text("\(calendar.component(.day, from: date))")
-                .font(.subheadline.bold())
-                .foregroundStyle(isToday ? .white : .primary)
-                .frame(width: 28, height: 28)
-                .background(isToday ? Color.accentColor : .clear)
-                .clipShape(Circle())
-        }
-    }
-
-    private var dayLetter: String {
-        let df = DateFormatter()
-        df.dateFormat = "EEE"
-        return df.string(from: date)
     }
 }

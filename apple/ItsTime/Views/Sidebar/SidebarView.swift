@@ -40,152 +40,13 @@ struct SidebarView: View {
             get: { selectedSmartList?.rawValue ?? selectedList?.id.uuidString },
             set: { _ in }
         )) {
-            // Smart Lists
-            Section("Smart Lists") {
-                ForEach(SmartList.basicLists) { smart in
-                    smartListRow(smart)
-                }
-            }
-
-            // Views
-            Section("Views") {
-                ForEach(SmartList.viewLists) { smart in
-                    smartListRow(smart)
-                }
-            }
-
-            // Custom Filters
-            if !customFilters.isEmpty {
-                Section("Filters") {
-                    ForEach(customFilters) { filter in
-                        Button {
-                            selectedSmartList = nil
-                            selectedList = nil
-                            selectedFilter = filter
-                            onSelectFilter?(filter)
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: filter.icon)
-                                    .foregroundStyle(Color(hex: filter.color))
-                                Text(filter.name)
-                                Spacer()
-                            }
-                        }
-                        .contextMenu {
-                            Button("Edit", systemImage: "pencil") {
-                                filterToEdit = filter
-                            }
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                modelContext.delete(filter)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // User Lists (no folder)
-            Section("Lists") {
-                ForEach(userLists) { list in
-                    listRow(list)
-                }
-                .onMove { from, to in
-                    moveList(from: from, to: to)
-                }
-
-                Button {
-                    showNewList = true
-                } label: {
-                    Label("New List", systemImage: "plus")
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Folders with their lists
-            ForEach(folders) { folder in
-                Section {
-                    ForEach(folder.lists.sorted(by: { $0.sortOrder < $1.sortOrder })) { list in
-                        listRow(list)
-                    }
-                } header: {
-                    HStack {
-                        Text(folder.name)
-                        Spacer()
-                        Button {
-                            withAnimation {
-                                folder.isExpanded.toggle()
-                            }
-                        } label: {
-                            Image(systemName: folder.isExpanded ? "chevron.down" : "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .contextMenu {
-                        Button("Rename", systemImage: "pencil") {
-                            newFolderName = folder.name
-                            // Use the rename flow for folders
-                            folder.name = folder.name // placeholder, handled by alert
-                        }
-                        Button("Delete Folder", systemImage: "trash", role: .destructive) {
-                            // Move lists out of folder before deleting
-                            for list in folder.lists {
-                                list.folder = nil
-                            }
-                            modelContext.delete(folder)
-                        }
-                    }
-                }
-            }
-
-            // Habits, Chat, Automations & Collaboration
-            Section("More") {
-                NavigationLink {
-                    ChatListView()
-                } label: {
-                    Label("Chat", systemImage: "bubble.left.and.bubble.right")
-                }
-                NavigationLink {
-                    HabitListView()
-                } label: {
-                    Label("Habits", systemImage: "leaf")
-                }
-                NavigationLink {
-                    TriggerListView()
-                } label: {
-                    Label("Automations", systemImage: "bolt.circle")
-                }
-                Button {
-                    showCollaborators = true
-                } label: {
-                    Label("Collaborators", systemImage: "person.2")
-                }
-            }
-
-            // Tags
-            if !tags.isEmpty {
-                Section("Tags") {
-                    ForEach(tags) { tag in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(Color(hex: tag.color))
-                                .frame(width: 10, height: 10)
-                            Text(tag.name)
-                            Spacer()
-                            Text("\(tag.tasks.filter { $0.status == .todo }.count)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Button {
-                        showTagManager = true
-                    } label: {
-                        Label("Manage Tags", systemImage: "tag")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+            smartListsSection
+            viewsSection
+            filtersSection
+            listsSection
+            foldersSection
+            moreSection
+            tagsSection
         }
         .listStyle(.sidebar)
         .navigationTitle("Its Time")
@@ -392,6 +253,167 @@ struct SidebarView: View {
         for (index, list) in mutable.enumerated() {
             list.sortOrder = index
             list.updatedAt = Date()
+        }
+    }
+
+    // MARK: - Extracted Sections
+
+    @ViewBuilder
+    private var smartListsSection: some View {
+        Section("Smart Lists") {
+            ForEach(SmartList.basicLists) { smart in
+                smartListRow(smart)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var viewsSection: some View {
+        Section("Views") {
+            ForEach(SmartList.viewLists) { smart in
+                smartListRow(smart)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var filtersSection: some View {
+        if !customFilters.isEmpty {
+            Section("Filters") {
+                ForEach(customFilters) { filter in
+                    Button {
+                        selectedSmartList = nil
+                        selectedList = nil
+                        selectedFilter = filter
+                        onSelectFilter?(filter)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: filter.icon)
+                                .foregroundStyle(Color(hex: filter.color))
+                            Text(filter.name)
+                            Spacer()
+                        }
+                    }
+                    .contextMenu {
+                        Button("Edit", systemImage: "pencil") {
+                            filterToEdit = filter
+                        }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            modelContext.delete(filter)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var listsSection: some View {
+        Section("Lists") {
+            ForEach(userLists) { list in
+                listRow(list)
+            }
+            .onMove { from, to in
+                moveList(from: from, to: to)
+            }
+
+            Button {
+                showNewList = true
+            } label: {
+                Label("New List", systemImage: "plus")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var foldersSection: some View {
+        ForEach(folders) { folder in
+            Section {
+                ForEach(folder.lists.sorted(by: { $0.sortOrder < $1.sortOrder })) { list in
+                    listRow(list)
+                }
+            } header: {
+                HStack {
+                    Text(folder.name)
+                    Spacer()
+                    Button {
+                        withAnimation {
+                            folder.isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: folder.isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .contextMenu {
+                    Button("Rename", systemImage: "pencil") {
+                        newFolderName = folder.name
+                        folder.name = folder.name
+                    }
+                    Button("Delete Folder", systemImage: "trash", role: .destructive) {
+                        for list in folder.lists {
+                            list.folder = nil
+                        }
+                        modelContext.delete(folder)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var moreSection: some View {
+        Section("More") {
+            NavigationLink {
+                ChatListView()
+            } label: {
+                Label("Chat", systemImage: "bubble.left.and.bubble.right")
+            }
+            NavigationLink {
+                HabitListView()
+            } label: {
+                Label("Habits", systemImage: "leaf")
+            }
+            NavigationLink {
+                TriggerListView()
+            } label: {
+                Label("Automations", systemImage: "bolt.circle")
+            }
+            Button {
+                showCollaborators = true
+            } label: {
+                Label("Collaborators", systemImage: "person.2")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var tagsSection: some View {
+        if !tags.isEmpty {
+            Section("Tags") {
+                ForEach(tags) { tag in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color(hex: tag.color))
+                            .frame(width: 10, height: 10)
+                        Text(tag.name)
+                        Spacer()
+                        Text("\(tag.tasks.filter { $0.status == .todo }.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Button {
+                    showTagManager = true
+                } label: {
+                    Label("Manage Tags", systemImage: "tag")
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }

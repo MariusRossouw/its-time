@@ -20,16 +20,23 @@ struct ItsTimeApp: App {
         Trigger.self,
         TriggerLogEntry.self,
         Collaborator.self,
-        Comment.self,
         ActivityEntry.self,
         ChatMessage.self,
-        SyncProfile.self
+        SyncProfile.self,
+        TaskAttachment.self,
+        TaskTemplate.self
     ]
+
+    static let appGroupID = "group.com.mariusrossouw.itstime"
 
     private static func makeContainer() -> ModelContainer {
         let schema = Schema(modelTypes)
         if isUITesting {
             let config = ModelConfiguration(isStoredInMemoryOnly: true)
+            return try! ModelContainer(for: schema, configurations: config)
+        } else if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
+            let storeURL = containerURL.appending(path: "default.store")
+            let config = ModelConfiguration(url: storeURL)
             return try! ModelContainer(for: schema, configurations: config)
         } else {
             return try! ModelContainer(for: schema)
@@ -63,7 +70,6 @@ struct ItsTimeApp: App {
                     guard let userInfo = notification.userInfo,
                           let taskId = userInfo["taskId"] as? String,
                           let direction = userInfo["direction"] as? String else { return }
-                    // Fire a local notification for the task
                     NotificationService.shared.fireLocationReminder(
                         taskId: taskId,
                         taskTitle: "Task Reminder",

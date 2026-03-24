@@ -44,8 +44,8 @@ struct SearchView: View {
                     }
                 }
             }
-            .taskNavigationDestination()
             .listStyle(.plain)
+            .taskNavigationDestination()
             .navigationTitle("Search")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

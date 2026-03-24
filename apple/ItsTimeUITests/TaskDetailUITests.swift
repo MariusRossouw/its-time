@@ -136,26 +136,26 @@ final class TaskDetailUITests: ItsTimeUITestBase {
         app.swipeUp()
         // The markdown editor has a text view
         // Just verify the collaboration section is reachable (below description)
-        let comments = app.staticTexts["Comments"]
-        XCTAssertTrue(waitFor(comments, timeout: 5), "Comments link should be reachable (description section above)")
+        let activity = app.staticTexts["Activity & Comments"]
+        XCTAssertTrue(waitFor(activity, timeout: 5), "Activity & Comments link should be reachable (description section above)")
     }
 
-    // TD-14: Comments navigation link exists
-    func testCommentsLinkExists() {
+    // TD-14: Activity & Comments navigation link exists
+    func testActivityCommentsLinkExists() {
         createAndOpenTask()
         app.swipeUp()
         app.swipeUp()
-        let comments = app.staticTexts["Comments"]
-        XCTAssertTrue(waitFor(comments, timeout: 5), "Comments link should exist")
+        let activity = app.staticTexts["Activity & Comments"]
+        XCTAssertTrue(waitFor(activity, timeout: 5), "Activity & Comments link should exist")
     }
 
-    // TD-15: Activity navigation link exists
+    // TD-15: (merged into TD-14 — Activity and Comments are now unified)
     func testActivityLinkExists() {
         createAndOpenTask()
         app.swipeUp()
         app.swipeUp()
-        let activity = app.staticTexts["Activity"]
-        XCTAssertTrue(waitFor(activity, timeout: 5), "Activity link should exist")
+        let activity = app.staticTexts["Activity & Comments"]
+        XCTAssertTrue(waitFor(activity, timeout: 5), "Activity & Comments link should exist")
     }
 
     // TD-16: Info section shows created/updated dates
@@ -169,16 +169,16 @@ final class TaskDetailUITests: ItsTimeUITestBase {
         XCTAssertTrue(waitFor(created, timeout: 5), "Created date should be visible in Info section")
     }
 
-    // TD-17: Navigate to Comments view
-    func testNavigateToComments() {
+    // TD-17: Navigate to Activity view (unified comments + activity)
+    func testNavigateToActivity() {
         createAndOpenTask()
         app.swipeUp()
         app.swipeUp()
-        let comments = app.staticTexts["Comments"]
-        _ = waitFor(comments, timeout: 5)
-        comments.tap()
-        let commentsNav = app.navigationBars["Comments"]
-        XCTAssertTrue(waitFor(commentsNav), "Comments view should open")
+        let activity = app.staticTexts["Activity & Comments"]
+        _ = waitFor(activity, timeout: 5)
+        activity.tap()
+        let activityNav = app.navigationBars["Activity"]
+        XCTAssertTrue(waitFor(activityNav), "Activity view should open")
     }
 
     // TD-18: Navigate to Activity view

@@ -80,14 +80,136 @@ final class NotificationService {
             options: []
         )
 
-        let category = UNNotificationCategory(
+        let reminderCategory = UNNotificationCategory(
             identifier: "TASK_REMINDER",
             actions: [doneAction, snoozeAction],
             intentIdentifiers: [],
             options: []
         )
 
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        // Auto-nudge category: "Will you still get to this?"
+        let nudgeDone = UNNotificationAction(
+            identifier: "NUDGE_DONE",
+            title: "Done ✓",
+            options: []
+        )
+        let nudgeLater = UNNotificationAction(
+            identifier: "NUDGE_LATER",
+            title: "Later",
+            options: []
+        )
+        let nudgeWontDo = UNNotificationAction(
+            identifier: "NUDGE_WONT_DO",
+            title: "Won't Do",
+            options: []
+        )
+        let nudgeDelete = UNNotificationAction(
+            identifier: "NUDGE_DELETE",
+            title: "Delete",
+            options: [.destructive]
+        )
+
+        let nudgeCategory = UNNotificationCategory(
+            identifier: "TASK_NUDGE",
+            actions: [nudgeDone, nudgeLater, nudgeWontDo, nudgeDelete],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        UNUserNotificationCenter.current().setNotificationCategories([reminderCategory, nudgeCategory])
+    }
+
+    // MARK: - Auto-Nudge
+
+    /// Schedule auto-nudge reminders for all qualifying tasks
+    func scheduleAutoNudges(tasks: [TaskItem]) {
+        guard UserDefaults.standard.bool(forKey: "autoNudgeEnabled") else { return }
+
+        let rawDaytime = UserDefaults.standard.integer(forKey: "autoNudgeDaytimeHour")
+        let daytimeHour = rawDaytime > 0 ? min(max(rawDaytime, 6), 18) : 10
+        let rawNighttime = UserDefaults.standard.integer(forKey: "autoNudgeNighttimeHour")
+        let nighttimeHour = rawNighttime > 0 ? min(max(rawNighttime, 17), 23) : 20
+        let rawAnytime = UserDefaults.standard.integer(forKey: "autoNudgeAnytimeHour")
+        let anytimeHour = rawAnytime > 0 ? min(max(rawAnytime, 8), 20) : 14
+
+        let qualifying = tasks.filter { task in
+            task.status == .todo &&
+            task.nudgeDate == nil &&
+            task.reminderOffsets.isEmpty &&
+            (task.dueDate == nil || task.dueDate! > Date()) // not overdue
+        }
+
+        for task in qualifying {
+            let hour: Int
+            switch task.timePreference {
+            case .daytime: hour = daytimeHour
+            case .nighttime: hour = nighttimeHour
+            case .anytime: hour = anytimeHour
+            }
+            scheduleAutoNudgeNotification(for: task, atHour: hour)
+        }
+    }
+
+    /// Schedule a single auto-nudge notification for a task at the given hour today (or tomorrow if past)
+    private func scheduleAutoNudgeNotification(for task: TaskItem, atHour hour: Int) {
+        let calendar = Calendar.current
+        let now = Date()
+
+        var nudgeDate: Date
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = hour
+        components.minute = 0
+
+        if let candidate = calendar.date(from: components), candidate > now {
+            nudgeDate = candidate
+        } else {
+            // Already past that hour today — schedule for tomorrow
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+            components = calendar.dateComponents([.year, .month, .day], from: tomorrow)
+            components.hour = hour
+            components.minute = 0
+            nudgeDate = calendar.date(from: components) ?? tomorrow
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = task.title
+        content.body = "Will you still get to this task?"
+        content.sound = .default
+        content.categoryIdentifier = "TASK_NUDGE"
+        content.userInfo = ["taskId": task.id.uuidString]
+
+        let triggerComponents = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute],
+            from: nudgeDate
+        )
+        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerComponents, repeats: false)
+
+        let request = UNNotificationRequest(
+            identifier: "\(task.id.uuidString)-autonudge",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { print("Failed to schedule auto-nudge: \(error)") }
+        }
+    }
+
+    /// Cancel auto-nudge for a specific task
+    func cancelAutoNudge(for task: TaskItem) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: ["\(task.id.uuidString)-autonudge"]
+        )
+    }
+
+    /// Cancel all auto-nudge notifications
+    func cancelAllAutoNudges() {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let ids = requests
+                .filter { $0.identifier.hasSuffix("-autonudge") }
+                .map(\.identifier)
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+        }
     }
 
     /// Fire a notification when someone @mentions you in chat.

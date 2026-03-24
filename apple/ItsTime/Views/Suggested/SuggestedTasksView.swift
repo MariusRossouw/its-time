@@ -94,7 +94,6 @@ struct SuggestedTasksView: View {
                 )
             }
         }
-        .taskNavigationDestination()
         .listStyle(.plain)
         .navigationTitle("Suggested")
         #if os(iOS)
@@ -106,7 +105,9 @@ struct SuggestedTasksView: View {
     private func taskSection(title: String, icon: String, color: Color, tasks: [TaskItem]) -> some View {
         Section {
             ForEach(tasks) { task in
-                NavigationLink(value: task) {
+                NavigationLink {
+                    if task.isNote { NoteEditorView(note: task) } else { TaskDetailView(task: task) }
+                } label: {
                     TaskRowView(task: task)
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {

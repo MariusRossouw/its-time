@@ -147,14 +147,14 @@ final class GitHubSyncService {
             try await pushFile(path: "data/tasks/\(task.id.uuidString).json", content: data, token: token, repo: repo)
         }
 
-        // Push comments for scoped tasks
+        // Push activity log (includes comments) for scoped tasks
         let taskIds = Set(tasks.map(\.id))
-        let allComments = try context.fetch(FetchDescriptor<Comment>())
-        let commentsByTask = Dictionary(grouping: allComments.filter { taskIds.contains($0.task?.id ?? UUID()) }) { $0.task?.id ?? UUID() }
-        for (taskId, taskComments) in commentsByTask {
-            let dtos = taskComments.map { CommentSyncDTO(from: $0) }
+        let allActivity = try context.fetch(FetchDescriptor<ActivityEntry>())
+        let activityByTask = Dictionary(grouping: allActivity.filter { taskIds.contains($0.task?.id ?? UUID()) }) { $0.task?.id ?? UUID() }
+        for (taskId, entries) in activityByTask {
+            let dtos = entries.map { ActivitySyncDTO(from: $0) }
             let data = try encoder.encode(dtos)
-            try await pushFile(path: "data/comments/\(taskId.uuidString).json", content: data, token: token, repo: repo)
+            try await pushFile(path: "data/activity/\(taskId.uuidString).json", content: data, token: token, repo: repo)
         }
 
         // Push chat messages for scoped channels (list UUID channels + general)
@@ -231,13 +231,13 @@ final class GitHubSyncService {
             }
         }
 
-        // Pull comments
-        let commentFiles = try await listFiles(path: "data/comments", token: token, repo: repo)
-        for file in commentFiles where file.hasSuffix(".json") {
+        // Pull activity log (includes comments)
+        let activityFiles = try await listFiles(path: "data/activity", token: token, repo: repo)
+        for file in activityFiles where file.hasSuffix(".json") {
             if let data = try await pullFile(path: file, token: token, repo: repo) {
-                let dtos = try decoder.decode([CommentSyncDTO].self, from: data)
+                let dtos = try decoder.decode([ActivitySyncDTO].self, from: data)
                 for dto in dtos {
-                    try mergeComment(dto: dto, context: context)
+                    try mergeActivity(dto: dto, context: context)
                 }
             }
         }
@@ -298,13 +298,13 @@ final class GitHubSyncService {
         let collabData = try encoder.encode(collabDTOs)
         try await pushFile(path: "data/collaborators/collaborators.json", content: collabData, token: token, repo: repo)
 
-        // Push comments per task
-        let comments = try context.fetch(FetchDescriptor<Comment>())
-        let commentsByTask = Dictionary(grouping: comments) { $0.task?.id ?? UUID() }
-        for (taskId, taskComments) in commentsByTask {
-            let dtos = taskComments.map { CommentSyncDTO(from: $0) }
+        // Push activity log (includes comments) per task
+        let allActivity = try context.fetch(FetchDescriptor<ActivityEntry>())
+        let activityByTask = Dictionary(grouping: allActivity) { $0.task?.id ?? UUID() }
+        for (taskId, entries) in activityByTask {
+            let dtos = entries.map { ActivitySyncDTO(from: $0) }
             let data = try encoder.encode(dtos)
-            try await pushFile(path: "data/comments/\(taskId.uuidString).json", content: data, token: token, repo: repo)
+            try await pushFile(path: "data/activity/\(taskId.uuidString).json", content: data, token: token, repo: repo)
         }
 
         // Push chat messages per channel
@@ -363,13 +363,13 @@ final class GitHubSyncService {
             }
         }
 
-        // Pull comments
-        let commentFiles = try await listFiles(path: "data/comments", token: token, repo: repo)
-        for file in commentFiles where file.hasSuffix(".json") {
+        // Pull activity log (includes comments)
+        let activityFiles = try await listFiles(path: "data/activity", token: token, repo: repo)
+        for file in activityFiles where file.hasSuffix(".json") {
             if let data = try await pullFile(path: file, token: token, repo: repo) {
-                let dtos = try decoder.decode([CommentSyncDTO].self, from: data)
+                let dtos = try decoder.decode([ActivitySyncDTO].self, from: data)
                 for dto in dtos {
-                    try mergeComment(dto: dto, context: context)
+                    try mergeActivity(dto: dto, context: context)
                 }
             }
         }
@@ -497,6 +497,7 @@ final class GitHubSyncService {
                 existing.assignedTo = dto.assignedTo
                 existing.assignedToName = dto.assignedToName
                 existing.isNote = dto.isNote
+                existing.manualProgress = dto.manualProgress
                 existing.updatedAt = dto.updatedAt
             }
         } else {
@@ -520,6 +521,7 @@ final class GitHubSyncService {
             task.assignedTo = dto.assignedTo
             task.assignedToName = dto.assignedToName
             task.isNote = dto.isNote
+            task.manualProgress = dto.manualProgress
             task.createdAt = dto.createdAt
             task.updatedAt = dto.updatedAt
             task.deviceId = dto.deviceId
@@ -600,39 +602,42 @@ final class GitHubSyncService {
         }
     }
 
-    private func mergeComment(dto: CommentSyncDTO, context: ModelContext) throws {
-        let descriptor = FetchDescriptor<Comment>(predicate: #Predicate { $0.id == dto.id })
+    private func mergeActivity(dto: ActivitySyncDTO, context: ModelContext) throws {
+        let descriptor = FetchDescriptor<ActivityEntry>(predicate: #Predicate { $0.id == dto.id })
         let existing = try context.fetch(descriptor).first
 
         if existing == nil {
-            let comment = Comment(
-                text: dto.text,
+            let entry = ActivityEntry(
+                action: dto.action,
+                field: dto.field,
+                oldValue: dto.oldValue,
+                newValue: dto.newValue,
                 authorName: dto.authorName,
                 authorId: dto.authorId,
+                commentText: dto.commentText,
                 authorColor: dto.authorColor,
-                parentId: dto.parentId
+                parentCommentId: dto.parentCommentId
             )
-            comment.id = dto.id
-            comment.createdAt = dto.createdAt
-            comment.updatedAt = dto.updatedAt
+            entry.id = dto.id
+            entry.timestamp = dto.timestamp
 
             // Link to task
             if let taskId = dto.taskId {
                 let taskDescriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { $0.id == taskId })
                 if let task = try context.fetch(taskDescriptor).first {
-                    comment.task = task
+                    entry.task = task
                 }
             }
 
-            // Link to parent comment for replies
-            if let parentId = dto.parentId {
-                let parentDescriptor = FetchDescriptor<Comment>(predicate: #Predicate { $0.id == parentId })
+            // Link to parent for reply threading
+            if let parentId = dto.parentCommentId {
+                let parentDescriptor = FetchDescriptor<ActivityEntry>(predicate: #Predicate { $0.id == parentId })
                 if let parent = try context.fetch(parentDescriptor).first {
-                    parent.replies.append(comment)
+                    parent.replies.append(entry)
                 }
             }
 
-            context.insert(comment)
+            context.insert(entry)
         }
     }
 
@@ -733,6 +738,8 @@ struct TaskSyncDTO: Codable {
     let listId: UUID?
     let tagIds: [UUID]
     let parentTaskId: UUID?
+    let manualProgress: Int?
+    let attachmentCount: Int
     let schemaVersion: Int
 
     init(from task: TaskItem) {
@@ -761,7 +768,9 @@ struct TaskSyncDTO: Codable {
         self.listId = task.list?.id
         self.tagIds = task.tags.map(\.id)
         self.parentTaskId = task.parentTask?.id
-        self.schemaVersion = 3
+        self.manualProgress = task.manualProgress
+        self.attachmentCount = task.attachments.count
+        self.schemaVersion = 4
     }
 }
 
@@ -888,28 +897,34 @@ struct CollaboratorSyncDTO: Codable {
     }
 }
 
-struct CommentSyncDTO: Codable {
+struct ActivitySyncDTO: Codable {
     let id: UUID
-    let text: String
+    let action: ActivityAction
+    let field: String?
+    let oldValue: String?
+    let newValue: String?
     let authorName: String
     let authorId: UUID
-    let authorColor: String
-    let parentId: UUID?
+    let commentText: String?
+    let authorColor: String?
+    let parentCommentId: UUID?
     let taskId: UUID?
-    let createdAt: Date
-    let updatedAt: Date
+    let timestamp: Date
     let schemaVersion: Int
 
-    init(from comment: Comment) {
-        self.id = comment.id
-        self.text = comment.text
-        self.authorName = comment.authorName
-        self.authorId = comment.authorId
-        self.authorColor = comment.authorColor
-        self.parentId = comment.parentId
-        self.taskId = comment.task?.id
-        self.createdAt = comment.createdAt
-        self.updatedAt = comment.updatedAt
+    init(from entry: ActivityEntry) {
+        self.id = entry.id
+        self.action = entry.action
+        self.field = entry.field
+        self.oldValue = entry.oldValue
+        self.newValue = entry.newValue
+        self.authorName = entry.authorName
+        self.authorId = entry.authorId
+        self.commentText = entry.commentText
+        self.authorColor = entry.authorColor
+        self.parentCommentId = entry.parentCommentId
+        self.taskId = entry.task?.id
+        self.timestamp = entry.timestamp
         self.schemaVersion = 1
     }
 }
